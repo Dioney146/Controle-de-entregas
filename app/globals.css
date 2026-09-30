@@ -44,6 +44,8 @@ code { background: #eef1f5; padding: 1px 5px; border-radius: 4px; margin: 0 3px;
 .topo nav a.ativo { background: rgba(255,255,255,.14); color: #fff; }
 .usuario { display: flex; align-items: center; gap: 8px; font-size: .82rem; opacity: .85; }
 .usuario .btn.link { color: #fff; }
+.nome-usuario { background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.25); color: #fff; border-radius: 6px; padding: 5px 9px; font: inherit; width: 9.5em; }
+.nome-usuario::placeholder { color: #c9d6e4; }
 
 .conteudo { padding: 20px; max-width: 1600px; margin: 0 auto; }
 
