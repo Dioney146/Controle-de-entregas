@@ -123,20 +123,20 @@ export default function Frete() {
                 {linhas.map((l) => (
                   <tr key={l.id} className={l.status === "PROGRAMADO" ? "" : "l-verde"}>
                     <td>{fmtData(l.data).slice(0, 5)}</td>
-                    <td><CampoEditavel valor={l.zona} largura="6.5em" aoSalvar={(v) => atualizar(l.id, { zona: v })} /></td>
+                    <td><CampoEditavel valor={l.zona} largura="6em" aoSalvar={(v) => atualizar(l.id, { zona: v })} /></td>
                     <td className="placa">{l.placa}</td>
                     <td>{l.transportadora}</td>
                     <td className="n"><CampoEditavel tipo="number" min={0} valor={l.entregas ?? ""} largura="4em" className="n" aoSalvar={(v) => atualizar(l.id, { entregas: v })} /></td>
                     <td className="n">{num(l.kg)}</td>
-                    <td><CampoEditavel valor={l.motorista} largura="16em" lista="lista-motoristas" placeholder="motorista…" className={l.motorista ? "" : "falta"} aoSalvar={(v) => atualizar(l.id, { motorista: v })} /></td>
-                    <td><CampoEditavel valor={l.entregador} largura="16em" lista="lista-entregadores" placeholder="entregador…" aoSalvar={(v) => atualizar(l.id, { entregador: v })} /></td>
-                    <td><CampoEditavel valor={l.destino} largura="13em" aoSalvar={(v) => atualizar(l.id, { destino: v })} /></td>
+                    <td><CampoEditavel valor={l.motorista} largura="14em" lista="lista-motoristas" placeholder="motorista…" className={l.motorista ? "" : "falta"} aoSalvar={(v) => atualizar(l.id, { motorista: v })} /></td>
+                    <td><CampoEditavel valor={l.entregador} largura="14em" lista="lista-entregadores" placeholder="entregador…" aoSalvar={(v) => atualizar(l.id, { entregador: v })} /></td>
+                    <td><CampoEditavel valor={l.destino} largura="12em" aoSalvar={(v) => atualizar(l.id, { destino: v })} /></td>
                     <td className="n">{moeda(l.valor)}</td>
-                    <td className="saida">
+                    <td className="saida"><div className="saida-box">
                       <input type="time" className="campo-ed hora nao-imprimir" value={horaInput(l.hora_saida)} onChange={(e) => definirSaida(l, e.target.value)} />
                       <span className="so-imprimir">{horaInput(l.hora_saida)}</span>
-                      {l.status === "PROGRAMADO" && <button className="btn mini nao-imprimir" onClick={() => saiuAgora(l)}>Saiu agora</button>}
-                    </td>
+                      {l.status === "PROGRAMADO" && <button className="btn mini nao-imprimir" onClick={() => saiuAgora(l)}>Saiu</button>}
+                    </div></td>
                     <td className="nao-imprimir"><span className={`status s-${l.status}`}>{ROTULO[l.status]}</span></td>
                     <td className="nao-imprimir">{l.status === "PROGRAMADO" && <button className="btn link perigo" title="Remover do frete" onClick={() => remover(l)}>✕</button>}</td>
                   </tr>

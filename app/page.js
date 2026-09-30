@@ -62,7 +62,7 @@ export default function Programacao() {
 
   const mapaVeic = useMemo(() => Object.fromEntries(veiculos.map((v) => [v.placa, v])), [veiculos]);
 
-  // Linhas da programação: rotas do RoadNet (verde) + frota fixa sem rota (laranja)
+  // Linhas da programação: só os equipamentos que vieram do RoadNet (verde = com carga, laranja = sem carga)
   const linhas = useMemo(() => {
     const comRota = rotas.map((r) => {
       const v = mapaVeic[r.placa];
@@ -83,17 +83,9 @@ export default function Programacao() {
         rota: r,
       };
     });
-    const placasComRota = new Set(rotas.map((r) => r.placa));
-    const semRota = veiculos
-      .filter((v) => v.ativo && !placasComRota.has(v.placa))
-      .map((v) => ({
-        chave: "v" + v.placa, tipoLinha: "semcarga", placa: v.placa, transportadora: v.transportadora,
-        tipo: v.tipo, cadastrada: true, paradas: null, peso: null, capacidade: null, valor: null,
-        ocupacao: null, entregador: "", destino: "", rota: null,
-      }));
     const ordenar = (a, b) => (a.transportadora || "zzz").localeCompare(b.transportadora || "zzz") || a.placa.localeCompare(b.placa);
-    return [...comRota.sort(ordenar), ...semRota.sort(ordenar)];
-  }, [rotas, veiculos, mapaVeic]);
+    return comRota.sort((x, y) => (x.tipoLinha === y.tipoLinha ? ordenar(x, y) : x.tipoLinha === "carga" ? -1 : 1));
+  }, [rotas, mapaVeic]);
 
   const comCarga = linhas.filter((l) => l.tipoLinha === "carga");
   const semCarga = linhas.filter((l) => l.tipoLinha !== "carga");
@@ -200,7 +192,7 @@ export default function Programacao() {
       <div className="cabecalho-pagina">
         <div>
           <h1>Planejamento de entregas — Roteirização AM</h1>
-          <p className="sub">Cole a base do RoadNet. Placas com carga ficam <b className="t-verde">verdes</b>; frota fixa sem carga fica <b className="t-laranja">laranja</b>.</p>
+          <p className="sub">Cole a base do RoadNet. Equipamento com carga fica <b className="t-verde">verde</b>; sem carga fica <b className="t-laranja">laranja</b>.</p>
         </div>
         <div className="acoes">
           <label className="campo-data">Data de saída
@@ -266,7 +258,7 @@ export default function Programacao() {
           <span>Ocupação da frota</span>
           <b>{pct(ocup)}</b>
           <div className="barra"><i style={{ width: `${Math.min(ocup, 1) * 100}%` }} /></div>
-          <small>Carga {pct(ocup)} · Livre {pct(1 - ocup)}</small>
+          <small>livre {pct(1 - ocup)}</small>
         </div>
       </section>
 
@@ -323,7 +315,7 @@ export default function Programacao() {
                       <td className="n">{num(l.capacidade)}</td>
                       <td className="n">{l.ocupacao !== null ? <span className={l.ocupacao > 1 ? "t-vermelho" : ""}>{pct(l.ocupacao)}</span> : ""}</td>
                       <td>{l.entregador}</td>
-                      <td>{l.destino || (l.tipoLinha === "semcarga" ? "SEM CARGA" : "")}</td>
+                      <td>{l.destino}{l.tipoLinha !== "carga" && <b className="t-laranja"> · SEM CARGA</b>}</td>
                       <td className="n">{moeda(l.valor)}</td>
                     </tr>
                   );

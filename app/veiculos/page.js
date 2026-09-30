@@ -52,7 +52,6 @@ export default function Veiculos() {
   const transportadoras = useMemo(() => [...new Set(lista.map((v) => v.transportadora).filter(Boolean))].sort(), [lista]);
   const b = busca.trim().toUpperCase();
   const visiveis = lista.filter((v) => !b || [v.placa, v.transportadora, v.motorista, v.tipo].some((x) => (x || "").toUpperCase().includes(b)));
-  const ativos = lista.filter((v) => v.ativo).length;
 
   return (
     <>
@@ -60,8 +59,7 @@ export default function Veiculos() {
         <div>
           <h1>Veículos</h1>
           <p className="sub">
-            Não precisa mais marcar STATUS todo dia: quem tem carga no RoadNet entra no frete sozinho.
-            Marque <b>Frota fixa</b> só nos veículos que você quer ver em <b className="t-laranja">laranja</b> quando ficarem sem carga.
+            Cadastro só de consulta: a programação usa os equipamentos que vêm do RoadNet. Aqui ficam a transportadora, o tipo e o motorista/entregador de cada placa.
           </p>
         </div>
       </div>
@@ -72,19 +70,18 @@ export default function Veiculos() {
         <input className="campo" list="lista-tipos" placeholder="Tipo" value={novo.tipo} onChange={(e) => setNovo({ ...novo, tipo: e.target.value })} style={{ width: "7em" }} />
         <input className="campo" placeholder="Motorista fixo (opcional)" value={novo.motorista} onChange={(e) => setNovo({ ...novo, motorista: e.target.value })} />
         <input className="campo" placeholder="Entregador fixo (opcional)" value={novo.entregador} onChange={(e) => setNovo({ ...novo, entregador: e.target.value })} />
-        <label className="check"><input type="checkbox" checked={novo.ativo} onChange={(e) => setNovo({ ...novo, ativo: e.target.checked })} /> Frota fixa</label>
         <button className="btn primario">Cadastrar</button>
       </form>
 
       <section className="cartao sem-pad">
         <div className="barra-tabela">
           <input className="campo" placeholder="Buscar…" value={busca} onChange={(e) => setBusca(e.target.value)} />
-          <span className="sub">{lista.length} veículos · {ativos} na frota fixa</span>
+          <span className="sub">{lista.length} veículos</span>
         </div>
         {carregando ? <div className="carregando">Carregando…</div> : (
           <div className="tabela-rolagem">
             <table>
-              <thead><tr><th>Transportadora</th><th>Placa</th><th>Tipo</th><th>Motorista fixo</th><th>Entregador fixo</th><th>Frota fixa</th><th>Obs</th><th></th></tr></thead>
+              <thead><tr><th>Transportadora</th><th>Placa</th><th>Tipo</th><th>Motorista fixo</th><th>Entregador fixo</th><th>Obs</th><th></th></tr></thead>
               <tbody>
                 {visiveis.map((v) => (
                   <tr key={v.placa}>
@@ -93,7 +90,6 @@ export default function Veiculos() {
                     <td><CampoEditavel valor={v.tipo} lista="lista-tipos" largura="6em" aoSalvar={(x) => atualizar(v.placa, { tipo: x })} /></td>
                     <td><CampoEditavel valor={v.motorista} aoSalvar={(x) => atualizar(v.placa, { motorista: x })} /></td>
                     <td><CampoEditavel valor={v.entregador} aoSalvar={(x) => atualizar(v.placa, { entregador: x })} /></td>
-                    <td className="c"><input type="checkbox" checked={v.ativo} onChange={(e) => atualizar(v.placa, { ativo: e.target.checked }).catch((er) => alert(er.message))} /></td>
                     <td><CampoEditavel valor={v.obs} aoSalvar={(x) => atualizar(v.placa, { obs: x })} /></td>
                     <td><button className="btn link perigo" onClick={() => excluir(v)}>✕</button></td>
                   </tr>
