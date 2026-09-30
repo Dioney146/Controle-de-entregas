@@ -5,8 +5,26 @@ import { sb } from "../../lib/supabase";
 import { useDataDaUrl, useTempoReal } from "../../lib/hooks";
 import { useUsuario } from "../../components/Casca";
 import CampoEditavel from "../../components/CampoEditavel";
+import { useFiltros, ThFiltro } from "../../components/FiltroColuna";
 import { useColunas } from "../../lib/colunas";
 import { fmtData, fmtHora, fmtDataHora, num } from "../../lib/util";
+
+const COLUNAS = {
+  data: { valor: (l) => l.data },
+  placa: { valor: (l) => l.placa },
+  trans: { valor: (l) => l.transportadora },
+  ent: { valor: (l) => l.entregas, numero: true },
+  kg: { valor: (l) => l.kg, numero: true },
+  motorista: { valor: (l) => l.motorista },
+  entregador: { valor: (l) => l.entregador },
+  destino: { valor: (l) => l.destino },
+  saida: { valor: (l) => fmtHora(l.hora_saida) },
+  cancel: { valor: (l) => l.cancelados || 0, numero: true },
+  reent: { valor: (l) => l.reentregas || 0, numero: true },
+  pend: { valor: (l) => l.pendentes || 0, numero: true },
+  celular: { valor: (l) => (l.celular_devolvido ? "DEVOLVIDO" : "NÃO") },
+  checkout: { valor: (l) => (l.status === "RETORNOU" ? "OK" : "EM ROTA") },
+};
 
 export default function Retorno() {
   const { email } = useUsuario();
@@ -17,6 +35,7 @@ export default function Retorno() {
   const [antigasEmRota, setAntigasEmRota] = useState(0);
   const [filtro, setFiltro] = useState("todos"); // todos | pendentes | retornados
   const [carregando, setCarregando] = useState(true);
+  const f = useFiltros(COLUNAS);
   const [refTabela, ajustarColunas] = useColunas(`retorno-${modo}`, `${carregando}-${linhas.length}-${filtro}-${linhas.filter((l) => l.status === "RETORNOU").length}`);
 
   async function carregar() {
@@ -62,14 +81,13 @@ export default function Retorno() {
   const pendentes = linhas.filter((l) => l.status === "EM_ROTA");
   const celulares = linhas.filter((l) => l.celular_devolvido).length;
   const soma = (c) => linhas.reduce((s, l) => s + (Number(l[c]) || 0), 0);
-  const visiveis = linhas.filter((l) => filtro === "todos" || (filtro === "pendentes" ? l.status === "EM_ROTA" : l.status === "RETORNOU"));
+  const porAba = linhas.filter((l) => filtro === "todos" || (filtro === "pendentes" ? l.status === "EM_ROTA" : l.status === "RETORNOU"));
+  const visiveis = f.aplicar(porAba);
 
   return (
     <>
       <div className="cabecalho-pagina">
         <div>
-          <h1>Painel de retorno de entregas</h1>
-          <p className="sub">Monitoramento: registre cancelados, reentregas, pendentes e celular, e dê o checkout quando o veículo voltar. Atualiza sozinho para todos.</p>
         </div>
         <div className="acoes">
           <div className="alternar">
@@ -110,7 +128,7 @@ export default function Retorno() {
               <button key={k} className={filtro === k ? "ativo" : ""} onClick={() => setFiltro(k)}>{r}</button>
             ))}
           </div>
-          <div className="linha-acoes"><button className="btn link" title="Volta as colunas para o auto ajuste" onClick={ajustarColunas}>↔ ajustar colunas</button><span className="sub">{visiveis.length} veículo(s)</span></div>
+          <div className="linha-acoes"><button className="btn link" title="Volta as colunas para o auto ajuste" onClick={ajustarColunas}>↔ ajustar colunas</button>{f.ativos > 0 && <button className="btn link" onClick={f.limparTudo}>✕ limpar filtros</button>}<span className="sub">{visiveis.length} veículo(s)</span></div>
         </div>
         {carregando ? <div className="carregando">Carregando…</div> : visiveis.length === 0 ? (
           <div className="vazio">Nenhum veículo {modo === "emrota" ? "em rota" : `saiu em ${fmtData(data)}`}.</div>
@@ -119,9 +137,20 @@ export default function Retorno() {
             <table className="retorno" ref={refTabela}>
               <thead>
                 <tr>
-                  {modo === "emrota" && <th>Data</th>}
-                  <th>Placa</th><th>Trans</th><th className="n">Entrega</th><th className="n">KG</th><th>Motorista</th><th>Entregador</th>
-                  <th>Destino</th><th>Saída</th><th className="n">Cancel.</th><th className="n">Reentr.</th><th className="n">Pend.</th><th>Celular</th><th>Checkout</th>
+                  {modo === "emrota" && <ThFiltro f={f} col="data" linhas={porAba}>Data</ThFiltro>}
+                  <ThFiltro f={f} col="placa" linhas={porAba}>Placa</ThFiltro>
+                  <ThFiltro f={f} col="trans" linhas={porAba}>Trans</ThFiltro>
+                  <ThFiltro f={f} col="ent" linhas={porAba} className="n">Entrega</ThFiltro>
+                  <ThFiltro f={f} col="kg" linhas={porAba} className="n">KG</ThFiltro>
+                  <ThFiltro f={f} col="motorista" linhas={porAba}>Motorista</ThFiltro>
+                  <ThFiltro f={f} col="entregador" linhas={porAba}>Entregador</ThFiltro>
+                  <ThFiltro f={f} col="destino" linhas={porAba}>Destino</ThFiltro>
+                  <ThFiltro f={f} col="saida" linhas={porAba}>Saída</ThFiltro>
+                  <ThFiltro f={f} col="cancel" linhas={porAba} className="n">Cancel.</ThFiltro>
+                  <ThFiltro f={f} col="reent" linhas={porAba} className="n">Reentr.</ThFiltro>
+                  <ThFiltro f={f} col="pend" linhas={porAba} className="n">Pend.</ThFiltro>
+                  <ThFiltro f={f} col="celular" linhas={porAba}>Celular</ThFiltro>
+                  <ThFiltro f={f} col="checkout" linhas={porAba}>Checkout</ThFiltro>
                 </tr>
               </thead>
               <tbody>

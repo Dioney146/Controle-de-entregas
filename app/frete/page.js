@@ -7,9 +7,26 @@ import { useDataDaUrl, useNomes, useTempoReal } from "../../lib/hooks";
 import CampoEditavel from "../../components/CampoEditavel";
 import { useColunas } from "../../lib/colunas";
 import { desfazerFrete } from "../../lib/frete";
+import { useFiltros, ThFiltro } from "../../components/FiltroColuna";
 import { fmtData, horaInput, horaParaTimestamp, num, moeda, normPlaca } from "../../lib/util";
 
 const ROTULO = { PROGRAMADO: "A sair", EM_ROTA: "Saiu", RETORNOU: "Retornou" };
+
+// colunas que podem ser filtradas / classificadas
+const COLUNAS = {
+  data: { valor: (l) => l.data },
+  zona: { valor: (l) => l.zona },
+  placa: { valor: (l) => l.placa },
+  trans: { valor: (l) => l.transportadora },
+  ent: { valor: (l) => l.entregas, numero: true },
+  kg: { valor: (l) => l.kg, numero: true },
+  motorista: { valor: (l) => l.motorista },
+  entregador: { valor: (l) => l.entregador },
+  infor: { valor: (l) => l.destino },
+  valor: { valor: (l) => l.valor, numero: true },
+  saida: { valor: (l) => horaInput(l.hora_saida) },
+  status: { valor: (l) => ROTULO[l.status] },
+};
 
 export default function Frete() {
   const [data, setData] = useDataDaUrl();
@@ -19,6 +36,8 @@ export default function Frete() {
   const [novaPlaca, setNovaPlaca] = useState("");
   const nomes = useNomes();
   const [refTabela, ajustarColunas] = useColunas("frete", `${carregando}-${linhas.length}`);
+  const f = useFiltros(COLUNAS);
+  const exibidas = f.aplicar(linhas);
 
   async function carregar() {
     if (!data) return;
@@ -34,7 +53,7 @@ export default function Frete() {
   // (A4 paisagem = 210mm; tira margens, título e folga)
   useEffect(() => {
     const ajustar = () => {
-      const linhasTabela = linhas.length + 2; // + cabeçalho + total
+      const linhasTabela = exibidas.length + 2; // + cabeçalho + total
       const alturaMm = Math.min(8, 176 / Math.max(1, linhasTabela));
       const fontePx = Math.max(6.5, Math.min(11, alturaMm * 2.1));
       document.documentElement.style.setProperty("--linha-imp", alturaMm.toFixed(2) + "mm");
@@ -43,7 +62,7 @@ export default function Frete() {
     ajustar();
     window.addEventListener("beforeprint", ajustar);
     return () => window.removeEventListener("beforeprint", ajustar);
-  }, [linhas.length]);
+  }, [exibidas.length]);
 
   async function atualizar(id, campos) {
     const antes = linhas.find((l) => l.id === id);
@@ -104,6 +123,8 @@ export default function Frete() {
   const totKg = linhas.reduce((s, l) => s + (Number(l.kg) || 0), 0);
   const totEnt = linhas.reduce((s, l) => s + (Number(l.entregas) || 0), 0);
   const totValor = linhas.reduce((s, l) => s + (Number(l.valor) || 0), 0);
+  // totais do rodapé seguem o filtro (como SUBTOTAL do Excel)
+  const somaVis = (c) => exibidas.reduce((s, l) => s + (Number(l[c]) || 0), 0);
 
   return (
     <>
@@ -142,13 +163,23 @@ export default function Frete() {
             <table className="frete" ref={refTabela}>
               <thead>
                 <tr>
-                  <th>Data</th><th>Zona</th><th>Placa</th><th>Trans</th><th className="n">Ent.</th><th className="n">KG</th>
-                  <th>Motorista</th><th>Entregadores</th><th>Infor</th><th className="n">Valor</th><th>Saída</th>
-                  <th className="nao-imprimir">Status</th><th className="nao-imprimir"></th>
+                  <ThFiltro f={f} col="data" linhas={linhas}>Data</ThFiltro>
+                  <ThFiltro f={f} col="zona" linhas={linhas}>Zona</ThFiltro>
+                  <ThFiltro f={f} col="placa" linhas={linhas}>Placa</ThFiltro>
+                  <ThFiltro f={f} col="trans" linhas={linhas}>Trans</ThFiltro>
+                  <ThFiltro f={f} col="ent" linhas={linhas} className="n">Ent.</ThFiltro>
+                  <ThFiltro f={f} col="kg" linhas={linhas} className="n">KG</ThFiltro>
+                  <ThFiltro f={f} col="motorista" linhas={linhas}>Motorista</ThFiltro>
+                  <ThFiltro f={f} col="entregador" linhas={linhas}>Entregadores</ThFiltro>
+                  <ThFiltro f={f} col="infor" linhas={linhas}>Infor</ThFiltro>
+                  <ThFiltro f={f} col="valor" linhas={linhas} className="n">Valor</ThFiltro>
+                  <ThFiltro f={f} col="saida" linhas={linhas}>Saída</ThFiltro>
+                  <ThFiltro f={f} col="status" linhas={linhas} className="nao-imprimir">Status</ThFiltro>
+                  <th className="nao-imprimir"></th>
                 </tr>
               </thead>
               <tbody>
-                {linhas.map((l) => (
+                {exibidas.map((l) => (
                   <tr key={l.id} className={l.status === "PROGRAMADO" ? "" : "l-verde"}>
                     <td>{fmtData(l.data).slice(0, 5)}</td>
                     <td><CampoEditavel valor={l.zona} largura="6em" aoSalvar={(v) => atualizar(l.id, { zona: v })} /></td>
@@ -176,9 +207,9 @@ export default function Frete() {
               </tbody>
               <tfoot>
                 <tr>
-                  <td colSpan={4}>TOTAL · {linhas.length} veículos</td>
-                  <td className="n">{num(totEnt)}</td><td className="n">{num(totKg)}</td>
-                  <td colSpan={3}></td><td className="n">{moeda(totValor)}</td><td></td>
+                  <td colSpan={4}>TOTAL · {exibidas.length} veículos</td>
+                  <td className="n">{num(somaVis("entregas"))}</td><td className="n">{num(somaVis("kg"))}</td>
+                  <td colSpan={3}></td><td className="n">{moeda(somaVis("valor"))}</td><td></td>
                   <td className="nao-imprimir" colSpan={2}></td>
                 </tr>
               </tfoot>
@@ -191,7 +222,10 @@ export default function Frete() {
             <button className="btn" onClick={adicionar} disabled={!novaPlaca}>Adicionar</button>
             <button className="btn link" title="Volta as colunas para o auto ajuste" onClick={ajustarColunas}>↔ ajustar colunas</button>
           </div>
-          {linhas.length > 0 && <Link className="btn" href={`/retorno?data=${data}`}>Ir para o Retorno →</Link>}
+          <div className="linha-acoes">
+            {f.ativos > 0 && <button className="btn link" onClick={f.limparTudo}>✕ limpar filtros ({exibidas.length} de {linhas.length})</button>}
+            {linhas.length > 0 && <Link className="btn" href={`/retorno?data=${data}`}>Ir para o Retorno →</Link>}
+          </div>
         </div>
       </section>
 

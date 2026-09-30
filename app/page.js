@@ -184,8 +184,6 @@ export default function Programacao() {
     <>
       <div className="cabecalho-pagina">
         <div>
-          <h1>Planejamento de entregas — Roteirização AM</h1>
-          <p className="sub">Cole a base do RoadNet. Equipamento com carga fica <b className="t-verde">verde</b>; sem carga fica <b className="t-laranja">laranja</b>.</p>
         </div>
         <div className="acoes">
           <label className="campo-data">Data de saída
