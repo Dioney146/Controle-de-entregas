@@ -30,6 +30,21 @@ export default function Frete() {
   useEffect(() => { sb().from("veiculos").select("*").order("placa").then(({ data }) => setVeiculos(data || [])); }, []);
   useTempoReal(carregar, [data]);
 
+  // Impressão em 1 folha: calcula altura da linha e fonte pela quantidade de veículos
+  // (A4 paisagem = 210mm; tira margens, título e folga)
+  useEffect(() => {
+    const ajustar = () => {
+      const linhasTabela = linhas.length + 2; // + cabeçalho + total
+      const alturaMm = Math.min(8, 176 / Math.max(1, linhasTabela));
+      const fontePx = Math.max(6.5, Math.min(11, alturaMm * 2.1));
+      document.documentElement.style.setProperty("--linha-imp", alturaMm.toFixed(2) + "mm");
+      document.documentElement.style.setProperty("--fonte-imp", fontePx.toFixed(1) + "px");
+    };
+    ajustar();
+    window.addEventListener("beforeprint", ajustar);
+    return () => window.removeEventListener("beforeprint", ajustar);
+  }, [linhas.length]);
+
   async function atualizar(id, campos) {
     const antes = linhas.find((l) => l.id === id);
     setLinhas((ls) => ls.map((l) => (l.id === id ? { ...l, ...campos } : l)));
