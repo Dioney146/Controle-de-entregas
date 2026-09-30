@@ -3,9 +3,10 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { sb, configurado } from "../lib/supabase";
+import { configurado } from "../lib/supabase";
 
-const UsuarioCtx = createContext(null);
+// Sem login por enquanto: o "usuário" é só o nome digitado no topo (fica salvo neste navegador)
+const UsuarioCtx = createContext({ email: "" });
 export const useUsuario = () => useContext(UsuarioCtx);
 
 const MENU = [
@@ -16,44 +17,18 @@ const MENU = [
   { href: "/veiculos", rotulo: "Veículos" },
 ];
 
-function Login() {
-  const [email, setEmail] = useState("");
-  const [senha, setSenha] = useState("");
-  const [erro, setErro] = useState("");
-  const [carregando, setCarregando] = useState(false);
-
-  async function entrar(e) {
-    e.preventDefault();
-    setErro("");
-    setCarregando(true);
-    const { error } = await sb().auth.signInWithPassword({ email: email.trim(), password: senha });
-    setCarregando(false);
-    if (error) setErro("E-mail ou senha inválidos.");
-  }
-
-  return (
-    <div className="login">
-      <form onSubmit={entrar} className="cartao login-cartao">
-        <div className="marca grande">Delly's <span>Controle de Entregas</span></div>
-        <label>E-mail<input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoFocus /></label>
-        <label>Senha<input type="password" value={senha} onChange={(e) => setSenha(e.target.value)} required /></label>
-        {erro && <div className="alerta erro">{erro}</div>}
-        <button className="btn primario" disabled={carregando}>{carregando ? "Entrando..." : "Entrar"}</button>
-      </form>
-    </div>
-  );
+function lerNome() {
+  try { return localStorage.getItem("nomeUsuario") || ""; } catch { return ""; }
+}
+function salvarNome(n) {
+  try { localStorage.setItem("nomeUsuario", n); } catch {}
 }
 
 export default function Casca({ children }) {
   const caminho = usePathname();
-  const [sessao, setSessao] = useState(undefined);
+  const [nome, setNome] = useState("");
 
-  useEffect(() => {
-    if (!configurado()) return;
-    sb().auth.getSession().then(({ data }) => setSessao(data.session));
-    const { data: sub } = sb().auth.onAuthStateChange((_ev, s) => setSessao(s));
-    return () => sub.subscription.unsubscribe();
-  }, []);
+  useEffect(() => { setNome(lerNome()); }, []);
 
   if (!configurado()) {
     return (
@@ -69,13 +44,8 @@ export default function Casca({ children }) {
     );
   }
 
-  if (sessao === undefined) return <div className="carregando-tela">Carregando…</div>;
-  if (!sessao) return <Login />;
-
-  const email = sessao.user?.email || "";
-
   return (
-    <UsuarioCtx.Provider value={{ email }}>
+    <UsuarioCtx.Provider value={{ email: nome.trim().toUpperCase() }}>
       <header className="topo nao-imprimir">
         <div className="marca">Delly's <span>Controle de Entregas · AM</span></div>
         <nav>
@@ -84,8 +54,13 @@ export default function Casca({ children }) {
           ))}
         </nav>
         <div className="usuario">
-          <span>{email}</span>
-          <button className="btn link" onClick={() => sb().auth.signOut()}>Sair</button>
+          <input
+            className="nome-usuario"
+            placeholder="Seu nome"
+            title="Aparece no checkout do retorno"
+            value={nome}
+            onChange={(e) => { setNome(e.target.value); salvarNome(e.target.value); }}
+          />
         </div>
       </header>
       <main className="conteudo">{children}</main>
