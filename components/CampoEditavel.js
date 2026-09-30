@@ -33,7 +33,6 @@ export default function CampoEditavel({ valor, aoSalvar, tipo = "text", lista, c
       min={min}
       list={lista}
       placeholder={placeholder}
-      style={largura ? { width: largura } : undefined}
       onChange={(e) => setV(e.target.value)}
       onBlur={salvar}
       onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
