@@ -148,17 +148,6 @@ export default function Programacao() {
     const jaSairam = new Set(saidasDia.filter((s) => s.status !== "PROGRAMADO").map((s) => s.placa));
     if (qtdProgramado && !confirm(`Já existe um frete de ${fmtData(data)} com ${qtdProgramado} veículo(s) ainda não saídos. Refazer o frete? (motoristas digitados nesses veículos serão perdidos)`)) return;
 
-    // último motorista/entregador usado por placa (para pré-preencher)
-    const hist = await sb().from("saidas").select("placa,motorista,entregador,data")
-      .gte("data", somarDias(data, -120)).neq("status", "PROGRAMADO")
-      .order("data", { ascending: false }).limit(3000);
-    const ultimo = {};
-    (hist.data || []).forEach((h) => {
-      if (!ultimo[h.placa]) ultimo[h.placa] = { motorista: "", entregador: "" };
-      if (!ultimo[h.placa].motorista && h.motorista) ultimo[h.placa].motorista = h.motorista;
-      if (!ultimo[h.placa].entregador && h.entregador) ultimo[h.placa].entregador = h.entregador;
-    });
-
     const novas = selecionadas
       .filter((l) => !jaSairam.has(l.placa))
       .map((l, i) => {
@@ -173,8 +162,8 @@ export default function Programacao() {
           kg: l.peso,
           valor: l.valor,
           destino: l.destino || "",
-          motorista: v.motorista || ultimo[l.placa]?.motorista || "",
-          entregador: l.entregador || v.entregador || ultimo[l.placa]?.entregador || "",
+          motorista: "",   // definidos depois pelo time de transporte
+          entregador: "",
           status: "PROGRAMADO",
           ordem: i,
         };

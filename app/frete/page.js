@@ -74,7 +74,7 @@ export default function Frete() {
     const v = veiculos.find((x) => x.placa === placa) || {};
     const { data: nova, error } = await sb().from("saidas").insert({
       data, placa, transportadora: v.transportadora || "", tipo: v.tipo || "",
-      motorista: v.motorista || "", entregador: v.entregador || "", status: "PROGRAMADO",
+      motorista: "", entregador: "", status: "PROGRAMADO",
       ordem: linhas.length ? Math.max(...linhas.map((l) => l.ordem || 0)) + 1 : 0,
     }).select().single();
     if (error) return alert(error.message);
@@ -110,7 +110,7 @@ export default function Frete() {
         <div className="kpi"><span>Veículos</span><b>{linhas.length}</b></div>
         <div className="kpi laranja"><span>A sair</span><b>{aSair}</b></div>
         <div className="kpi verde"><span>Saíram</span><b>{linhas.length - aSair}</b></div>
-        <div className={`kpi ${semMotorista ? "vermelho" : ""}`}><span>Sem motorista</span><b>{semMotorista}</b></div>
+        <div className="kpi"><span>Motorista a definir</span><b>{semMotorista}</b></div>
         <div className="kpi"><span>Entregas · Peso</span><b>{num(totEnt)} · {num(totKg)} kg</b></div>
       </section>
 
