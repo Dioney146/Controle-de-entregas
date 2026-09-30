@@ -130,8 +130,6 @@ export default function Frete() {
     <>
       <div className="cabecalho-pagina nao-imprimir">
         <div>
-          <h1>Frete / Saídas</h1>
-          <p className="sub">Gerado automaticamente pela programação. Complete motorista e entregador, imprima para a portaria e registre o horário de saída.</p>
         </div>
         <div className="acoes">
           <label className="campo-data">Data
