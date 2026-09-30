@@ -1,184 +1,89 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { sb, buscarTudo } from "../lib/supabase";
-import { interpretar, textoParaLinhas } from "../lib/roadnet";
-import { useUsuario } from "../components/Casca";
-import { lerDataTrabalho, guardarDataTrabalho } from "../lib/hooks";
-import { useColunas } from "../lib/colunas";
-import { desfazerFrete } from "../lib/frete";
-import {
-  hojeISO, somarDias, fmtData, num, moeda, pct, zonaDaDescricao, entregadorDoRoadnet,
-} from "../lib/util";
+import { useEffect, useState } from "react";
+import { sb } from "../../lib/supabase";
+import { useDataDaUrl, useTempoReal } from "../../lib/hooks";
+import { useUsuario } from "../../components/Casca";
+import CampoEditavel from "../../components/CampoEditavel";
+import { useFiltros, ThFiltro } from "../../components/FiltroColuna";
+import { useColunas } from "../../lib/colunas";
+import { fmtData, fmtHora, fmtDataHora, num } from "../../lib/util";
 
-export default function Programacao() {
-  const router = useRouter();
+const COLUNAS = {
+  data: { valor: (l) => l.data },
+  placa: { valor: (l) => l.placa },
+  trans: { valor: (l) => l.transportadora },
+  ent: { valor: (l) => l.entregas, numero: true },
+  kg: { valor: (l) => l.kg, numero: true },
+  motorista: { valor: (l) => l.motorista },
+  entregador: { valor: (l) => l.entregador },
+  destino: { valor: (l) => l.destino },
+  saida: { valor: (l) => (l.hora_saida ? fmtHora(l.hora_saida) : "A SAIR") },
+  cancel: { valor: (l) => l.cancelados || 0, numero: true },
+  reent: { valor: (l) => l.reentregas || 0, numero: true },
+  pend: { valor: (l) => l.pendentes || 0, numero: true },
+  celular: { valor: (l) => (l.celular_devolvido ? "DEVOLVIDO" : "NÃO") },
+  checkout: { valor: (l) => (l.status === "RETORNOU" ? "OK" : "PENDENTE") },
+};
+
+export default function Retorno() {
   const { email } = useUsuario();
-  const [data, setData] = useState(null);
-  const [rotas, setRotas] = useState([]);
-  const [veiculos, setVeiculos] = useState([]);
-  const [saidasDia, setSaidasDia] = useState([]);
+  const [data, setData] = useDataDaUrl();
+  const [modo, setModo] = useState("data"); // "data" | "emrota"
+  const [linhas, setLinhas] = useState([]);
+  const [aSair, setASair] = useState(0);
+  const [antigasEmRota, setAntigasEmRota] = useState(0);
+  const [filtro, setFiltro] = useState("todos"); // todos | pendentes | retornados
   const [carregando, setCarregando] = useState(true);
-  const [msg, setMsg] = useState(null);
+  const f = useFiltros(COLUNAS);
+  const [refTabela, ajustarColunas] = useColunas(`retorno-${modo}`, `${carregando}-${linhas.length}-${filtro}-${linhas.filter((l) => l.status === "RETORNOU").length}`);
 
-  // importação
-  const [abrirImport, setAbrirImport] = useState(false);
-  const [texto, setTexto] = useState("");
-  const [previa, setPrevia] = useState(null);
-  const [dataImport, setDataImport] = useState("");
-  const [salvando, setSalvando] = useState(false);
-
-  // seleção para o frete (automática: quem tem carga)
-  const [excluidas, setExcluidas] = useState({}); // chave -> true (desmarcada)
-  const [incluidasSemCarga, setIncluidasSemCarga] = useState({}); // placa -> true
-  const [mostrarSemCarga, setMostrarSemCarga] = useState(true);
-
-  // data inicial = última data usada, senão a programação mais recente (ou hoje)
-  useEffect(() => {
-    (async () => {
-      const guardada = lerDataTrabalho();
-      if (guardada) return setData(guardada);
-      const { data: ult } = await sb().from("programacao").select("data").order("data", { ascending: false }).limit(1);
-      setData(ult?.[0]?.data || hojeISO());
-    })();
-  }, []);
-
-  async function carregar(d = data) {
-    if (!d) return;
-    setCarregando(true);
-    const [r, v, s] = await Promise.all([
-      sb().from("programacao").select("*").eq("data", d).order("id"),
-      buscarTudo(() => sb().from("veiculos").select("*").order("transportadora").order("placa")),
-      sb().from("saidas").select("id,placa,status").eq("data", d),
+  async function carregar() {
+    if (!data) return;
+    let q = sb().from("saidas").select("*");
+    // espelho do Frete/Saídas: aparece assim que o frete é gerado (não precisa ter saída registrada)
+    q = modo === "emrota" ? q.neq("status", "RETORNOU") : q.eq("data", data);
+    const [r, p, a] = await Promise.all([
+      q.order("data").order("ordem").order("id"),
+      sb().from("saidas").select("id", { count: "exact", head: true }).eq("data", data).eq("status", "PROGRAMADO"),
+      sb().from("saidas").select("id", { count: "exact", head: true }).lt("data", data).neq("status", "RETORNOU"),
     ]);
-    setRotas(r.data || []);
-    setVeiculos(v || []);
-    setSaidasDia(s.data || []);
-    setExcluidas({});
-    setIncluidasSemCarga({});
+    setLinhas(r.data || []);
+    setASair(p.count || 0);
+    setAntigasEmRota(a.count || 0);
     setCarregando(false);
   }
-  useEffect(() => { guardarDataTrabalho(data); carregar(data); }, [data]);
+  useEffect(() => { setCarregando(true); carregar(); }, [data, modo]);
+  useTempoReal(carregar, [data, modo]);
 
-  const mapaVeic = useMemo(() => Object.fromEntries(veiculos.map((v) => [v.placa, v])), [veiculos]);
-
-  // Linhas da programação: só os equipamentos que vieram do RoadNet (verde = com carga, laranja = sem carga)
-  const linhas = useMemo(() => {
-    const comRota = rotas.map((r) => {
-      const v = mapaVeic[r.placa];
-      return {
-        chave: "r" + r.id,
-        tipoLinha: (r.paradas || 0) > 0 ? "carga" : "vazia",
-        placa: r.placa,
-        transportadora: v?.transportadora || "",
-        tipo: v?.tipo || r.tipo_equip || "",
-        cadastrada: Boolean(v),
-        paradas: r.paradas,
-        peso: r.peso,
-        capacidade: r.capacidade,
-        valor: r.valor,
-        ocupacao: r.capacidade ? (r.peso || 0) / r.capacidade : null,
-        entregador: entregadorDoRoadnet(r.trabalhadores),
-        destino: r.descricao,
-        rota: r,
-      };
-    });
-    const ordenar = (a, b) => (a.transportadora || "zzz").localeCompare(b.transportadora || "zzz") || a.placa.localeCompare(b.placa);
-    return comRota.sort((x, y) => (x.tipoLinha === y.tipoLinha ? ordenar(x, y) : x.tipoLinha === "carga" ? -1 : 1));
-  }, [rotas, mapaVeic]);
-
-  const [refTabela, ajustarColunas] = useColunas("programacao", `${carregando}-${linhas.length}-${mostrarSemCarga}`);
-
-  const comCarga = linhas.filter((l) => l.tipoLinha === "carga");
-  const semCarga = linhas.filter((l) => l.tipoLinha !== "carga");
-  const naoCadastradas = linhas.filter((l) => !l.cadastrada);
-  const pesoTotal = rotas.reduce((s, r) => s + (Number(r.peso) || 0), 0);
-  const capTotal = rotas.reduce((s, r) => s + (Number(r.capacidade) || 0), 0);
-  const valorTotal = rotas.reduce((s, r) => s + (Number(r.valor) || 0), 0);
-  const ocup = capTotal ? pesoTotal / capTotal : 0;
-
-  const vaiSair = (l) =>
-    l.tipoLinha === "carga" ? !excluidas[l.chave] : Boolean(incluidasSemCarga[l.chave]);
-  const selecionadas = linhas.filter(vaiSair);
-
-  const qtdProgramado = saidasDia.filter((s) => s.status === "PROGRAMADO").length;
-  const qtdConfirmado = saidasDia.filter((s) => s.status !== "PROGRAMADO").length;
-
-  // ---------- importação ----------
-  function aplicarPrevia(res) {
-    setPrevia(res);
-    setDataImport(res.dataSugerida || data || hojeISO());
-  }
-  function processarTexto(t = texto) {
-    aplicarPrevia(interpretar(textoParaLinhas(t)));
-  }
-
-  async function lerArquivo(e) {
-    const arq = e.target.files?.[0];
-    if (!arq) return;
-    const XLSX = await import("xlsx");
-    const buf = await arq.arrayBuffer();
-    const wb = XLSX.read(buf, { type: "array", cellDates: false, raw: false });
-    const ws = wb.Sheets[wb.SheetNames[0]];
-    const matriz = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null });
-    aplicarPrevia(interpretar(matriz));
-    e.target.value = "";
-  }
-
-  async function salvarProgramacao() {
-    if (!previa?.rotas?.length || !dataImport) return;
-    const { count } = await sb().from("programacao").select("id", { count: "exact", head: true }).eq("data", dataImport);
-    if (count && !confirm(`Já existe programação para ${fmtData(dataImport)} (${count} rotas). Substituir pela nova?`)) return;
-    setSalvando(true);
-    const del = await sb().from("programacao").delete().eq("data", dataImport);
-    if (del.error) { setSalvando(false); return setMsg({ tipo: "erro", txt: del.error.message }); }
-    const ins = await sb().from("programacao").insert(previa.rotas.map((r) => ({ ...r, data: dataImport, created_by: email })));
-    setSalvando(false);
-    if (ins.error) return setMsg({ tipo: "erro", txt: ins.error.message });
-    setMsg({ tipo: "ok", txt: `Programação de ${fmtData(dataImport)} salva: ${previa.rotas.length} rotas.` });
-    setTexto(""); setPrevia(null); setAbrirImport(false);
-    if (dataImport === data) carregar(dataImport); else setData(dataImport);
-  }
-
-  // ---------- gerar frete ----------
-  async function gerarFrete() {
-    if (!selecionadas.length) return;
-    const jaSairam = new Set(saidasDia.filter((s) => s.status !== "PROGRAMADO").map((s) => s.placa));
-    if (qtdProgramado && !confirm(`Já existe um frete de ${fmtData(data)} com ${qtdProgramado} veículo(s) ainda não saídos. Refazer o frete? (motoristas digitados nesses veículos serão perdidos)`)) return;
-
-    const novas = selecionadas
-      .filter((l) => !jaSairam.has(l.placa))
-      .map((l, i) => {
-        const v = mapaVeic[l.placa] || {};
-        return {
-          data,
-          zona: zonaDaDescricao(l.destino),
-          placa: l.placa,
-          transportadora: v.transportadora || "",
-          tipo: v.tipo || l.tipo || "",
-          entregas: l.paradas,
-          kg: l.peso,
-          valor: l.valor,
-          destino: l.destino || "",
-          motorista: "",   // definidos depois pelo time de transporte
-          entregador: "",
-          status: "PROGRAMADO",
-          ordem: i,
-        };
-      });
-
-    const del = await sb().from("saidas").delete().eq("data", data).eq("status", "PROGRAMADO");
-    if (del.error) return setMsg({ tipo: "erro", txt: del.error.message });
-    if (novas.length) {
-      const ins = await sb().from("saidas").insert(novas);
-      if (ins.error) return setMsg({ tipo: "erro", txt: ins.error.message });
+  async function atualizar(id, campos) {
+    const antes = linhas.find((l) => l.id === id);
+    setLinhas((ls) => ls.map((l) => (l.id === id ? { ...l, ...campos } : l)));
+    const { error } = await sb().from("saidas").update(campos).eq("id", id);
+    if (error) {
+      setLinhas((ls) => ls.map((l) => (l.id === id ? antes : l)));
+      throw error;
     }
-    router.push(`/frete?data=${data}`);
+  }
+
+  async function checkout(l) {
+    try { await atualizar(l.id, { status: "RETORNOU", checkout_em: new Date().toISOString(), checkout_por: email }); }
+    catch (e) { alert(e.message); }
+  }
+  async function desfazer(l) {
+    if (!confirm(`Desfazer o checkout de ${l.placa}?`)) return;
+    try { await atualizar(l.id, { status: l.hora_saida ? "EM_ROTA" : "PROGRAMADO", checkout_em: null, checkout_por: null }); }
+    catch (e) { alert(e.message); }
   }
 
   if (!data) return <div className="carregando">Carregando…</div>;
+
+  const retornaram = linhas.filter((l) => l.status === "RETORNOU");
+  const pendentes = linhas.filter((l) => l.status !== "RETORNOU");
+  const celulares = linhas.filter((l) => l.celular_devolvido).length;
+  const soma = (c) => linhas.reduce((s, l) => s + (Number(l[c]) || 0), 0);
+  const porAba = linhas.filter((l) => filtro === "todos" || (filtro === "pendentes" ? l.status !== "RETORNOU" : l.status === "RETORNOU"));
+  const visiveis = f.aplicar(porAba);
 
   return (
     <>
@@ -186,132 +91,97 @@ export default function Programacao() {
         <div>
         </div>
         <div className="acoes">
-          <label className="campo-data">Data de saída
-            <input type="date" value={data} onChange={(e) => setData(e.target.value)} />
-          </label>
-          <button className="btn" onClick={() => setAbrirImport(!abrirImport)}>{abrirImport ? "Fechar importação" : "Colar do RoadNet"}</button>
+          <div className="alternar">
+            <button className={modo === "data" ? "ativo" : ""} onClick={() => setModo("data")}>Por data</button>
+            <button className={modo === "emrota" ? "ativo" : ""} onClick={() => setModo("emrota")}>Todos pendentes</button>
+          </div>
+          {modo === "data" && (
+            <label className="campo-data">Data
+              <input type="date" value={data} onChange={(e) => setData(e.target.value)} />
+            </label>
+          )}
         </div>
       </div>
 
-      {msg && <div className={`alerta ${msg.tipo}`} onClick={() => setMsg(null)}>{msg.txt}</div>}
-
-      {abrirImport && (
-        <section className="cartao">
-          <h2>Importar base do RoadNet</h2>
-          <p className="sub">No RoadNet, selecione as rotas na grade, <b>Ctrl+C</b> e cole abaixo (com ou sem o cabeçalho). Ou envie o arquivo exportado (.xlsx/.csv).</p>
-          <textarea
-            className="colar"
-            placeholder="Cole aqui (Ctrl+V)…"
-            value={texto}
-            onChange={(e) => setTexto(e.target.value)}
-            onPaste={(e) => { const t = e.clipboardData.getData("text"); if (t) processarTexto(t); }}
-          />
-          <div className="linha-acoes">
-            <button className="btn" onClick={() => processarTexto()} disabled={!texto.trim()}>Ler texto colado</button>
-            <label className="btn arquivo">Enviar arquivo<input type="file" accept=".xlsx,.xls,.csv" onChange={lerArquivo} /></label>
-          </div>
-
-          {previa && (
-            <div className="previa">
-              {previa.avisos.map((a, i) => <div key={i} className="alerta aviso">{a}</div>)}
-              <p><b>{previa.rotas.length}</b> rotas lidas · <b>{previa.rotas.filter((r) => (r.paradas || 0) > 0).length}</b> com carga · peso {num(previa.rotas.reduce((s, r) => s + (r.peso || 0), 0))} kg</p>
-              {previa.rotas.length > 0 && (
-                <div className="linha-acoes">
-                  <label className="campo-data">Salvar como data de saída
-                    <input type="date" value={dataImport} onChange={(e) => setDataImport(e.target.value)} />
-                  </label>
-                  <button className="btn primario" onClick={salvarProgramacao} disabled={salvando || !dataImport}>
-                    {salvando ? "Salvando…" : "Salvar programação"}
-                  </button>
-                </div>
-              )}
-              <div className="tabela-rolagem mini">
-                <table>
-                  <thead><tr><th>Rota</th><th>Descrição</th><th>Placa</th><th className="n">Paradas</th><th className="n">Peso</th><th className="n">Valor</th><th>Trabalhadores</th></tr></thead>
-                  <tbody>
-                    {previa.rotas.slice(0, 60).map((r, i) => (
-                      <tr key={i}><td>{r.rota_id}</td><td>{r.descricao}</td><td>{r.placa}</td><td className="n">{r.paradas}</td><td className="n">{num(r.peso)}</td><td className="n">{moeda(r.valor)}</td><td>{r.trabalhadores}</td></tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-        </section>
+      {modo === "data" && antigasEmRota > 0 && (
+        <div className="alerta aviso">
+          Há <b>{antigasEmRota}</b> veículo(s) de datas anteriores ainda sem checkout.{" "}
+          <button className="btn link" onClick={() => setModo("emrota")}>Ver todos pendentes</button>
+        </div>
       )}
 
       <section className="kpis">
-        <div className="kpi verde"><span>Com carga</span><b>{comCarga.length}</b></div>
-        <div className="kpi laranja"><span>Sem carga</span><b>{semCarga.length}</b></div>
-        <div className="kpi"><span>Peso total</span><b>{num(pesoTotal)} kg</b></div>
-        <div className="kpi"><span>Valor (R.O.B)</span><b>{moeda(valorTotal)}</b></div>
-        <div className="kpi">
-          <span>Ocupação da frota</span>
-          <b>{pct(ocup)}</b>
-          <div className="barra"><i style={{ width: `${Math.min(ocup, 1) * 100}%` }} /></div>
-          <small>livre {pct(1 - ocup)}</small>
-        </div>
+        <div className="kpi verde"><span>Retornou</span><b>{retornaram.length}</b></div>
+        <div className="kpi laranja"><span>Pendente</span><b>{pendentes.length}</b></div>
+        <div className="kpi"><span>Celulares devolvidos</span><b>{celulares} / {linhas.length}</b></div>
+        <div className="kpi"><span>Cancelados</span><b>{num(soma("cancelados"))}</b></div>
+        <div className="kpi"><span>Reentregas</span><b>{num(soma("reentregas"))}</b></div>
+        <div className="kpi"><span>Entregas pendentes</span><b>{num(soma("pendentes"))}</b></div>
       </section>
-
-      {naoCadastradas.length > 0 && (
-        <div className="alerta aviso">
-          Placas roteirizadas que não estão no cadastro de veículos: {naoCadastradas.map((l) => (
-            <Link key={l.chave} href={`/veiculos?nova=${l.placa}`} className="etiqueta">{l.placa} +</Link>
-          ))}
-        </div>
-      )}
 
       <section className="cartao sem-pad">
         <div className="barra-tabela">
-          <div>
-            <b>{fmtData(data)}</b> · {rotas.length} rotas
-            {qtdProgramado + qtdConfirmado > 0 && (
-              <>
-                <span className="etiqueta cinza">Frete gerado: {qtdProgramado} a sair · {qtdConfirmado} já saíram</span>
-                <button className="btn link" onClick={async () => { if (await desfazerFrete(data)) carregar(data); }}>↩ desfazer frete</button>
-              </>
-            )}
+          <div className="alternar">
+            {[["todos", "Todos"], ["pendentes", "Pendentes"], ["retornados", "Retornados"]].map(([k, r]) => (
+              <button key={k} className={filtro === k ? "ativo" : ""} onClick={() => setFiltro(k)}>{r}</button>
+            ))}
           </div>
-          <div className="linha-acoes">
-            <button className="btn link" title="Volta as colunas para o auto ajuste" onClick={ajustarColunas}>↔ ajustar colunas</button>
-            <label className="check"><input type="checkbox" checked={mostrarSemCarga} onChange={(e) => setMostrarSemCarga(e.target.checked)} /> mostrar sem carga</label>
-            <button className="btn primario" disabled={!selecionadas.length} onClick={gerarFrete}>
-              Gerar frete com {selecionadas.length} veículo(s) →
-            </button>
-          </div>
+          <div className="linha-acoes"><button className="btn link" title="Volta as colunas para o auto ajuste" onClick={ajustarColunas}>↔ ajustar colunas</button>{f.ativos > 0 && <button className="btn link" onClick={f.limparTudo}>✕ limpar filtros</button>}<span className="sub">{visiveis.length} veículo(s)</span></div>
         </div>
-        {carregando ? <div className="carregando">Carregando…</div> : linhas.length === 0 ? (
-          <div className="vazio">Nenhuma programação para {fmtData(data)}. Clique em <b>Colar do RoadNet</b>.</div>
+        {carregando ? <div className="carregando">Carregando…</div> : visiveis.length === 0 ? (
+          <div className="vazio">Nenhum veículo {modo === "emrota" ? "pendente" : `no frete de ${fmtData(data)}`}.</div>
         ) : (
           <div className="tabela-rolagem">
-            <table className="prog" ref={refTabela}>
+            <table className="retorno" ref={refTabela}>
               <thead>
                 <tr>
-                  <th title="Entra no frete">Sai?</th><th>Trans.</th><th>Equipam.</th><th>Tipo</th><th className="n">E</th>
-                  <th className="n">KG</th><th className="n">Capac.</th><th className="n">%</th><th>Entregadores</th><th>Destino</th><th className="n">R.O.B</th>
+                  {modo === "emrota" && <ThFiltro f={f} col="data" linhas={porAba}>Data</ThFiltro>}
+                  <ThFiltro f={f} col="placa" linhas={porAba}>Placa</ThFiltro>
+                  <ThFiltro f={f} col="trans" linhas={porAba}>Trans</ThFiltro>
+                  <ThFiltro f={f} col="ent" linhas={porAba} className="n">Entrega</ThFiltro>
+                  <ThFiltro f={f} col="kg" linhas={porAba} className="n">KG</ThFiltro>
+                  <ThFiltro f={f} col="motorista" linhas={porAba}>Motorista</ThFiltro>
+                  <ThFiltro f={f} col="entregador" linhas={porAba}>Entregador</ThFiltro>
+                  <ThFiltro f={f} col="destino" linhas={porAba}>Destino</ThFiltro>
+                  <ThFiltro f={f} col="saida" linhas={porAba}>Saída</ThFiltro>
+                  <ThFiltro f={f} col="cancel" linhas={porAba} className="n">Cancel.</ThFiltro>
+                  <ThFiltro f={f} col="reent" linhas={porAba} className="n">Reentr.</ThFiltro>
+                  <ThFiltro f={f} col="pend" linhas={porAba} className="n">Pend.</ThFiltro>
+                  <ThFiltro f={f} col="celular" linhas={porAba}>Celular</ThFiltro>
+                  <ThFiltro f={f} col="checkout" linhas={porAba}>Checkout</ThFiltro>
                 </tr>
               </thead>
               <tbody>
-                {linhas.filter((l) => mostrarSemCarga || l.tipoLinha === "carga").map((l) => {
-                  const reservado = /RESERVAD/i.test(l.destino || "");
+                {visiveis.map((l) => {
+                  const ok = l.status === "RETORNOU";
                   return (
-                    <tr key={l.chave} className={`${l.tipoLinha === "carga" ? "l-verde" : "l-laranja"} ${reservado ? "l-reservado" : ""} ${vaiSair(l) ? "" : "l-fora"}`}>
-                      <td>
-                        <input type="checkbox" checked={vaiSair(l)} onChange={(e) => {
-                          if (l.tipoLinha === "carga") setExcluidas({ ...excluidas, [l.chave]: !e.target.checked });
-                          else setIncluidasSemCarga({ ...incluidasSemCarga, [l.chave]: e.target.checked });
-                        }} />
-                      </td>
-                      <td>{l.transportadora || <span className="etiqueta aviso">sem cadastro</span>}</td>
+                    <tr key={l.id} className={ok ? "l-verde" : ""}>
+                      {modo === "emrota" && <td>{fmtData(l.data).slice(0, 5)}</td>}
                       <td className="placa">{l.placa}</td>
-                      <td>{l.tipo}</td>
-                      <td className="n">{l.paradas ?? ""}</td>
-                      <td className="n">{num(l.peso)}</td>
-                      <td className="n">{num(l.capacidade)}</td>
-                      <td className="n">{l.ocupacao !== null ? <span className={l.ocupacao > 1 ? "t-vermelho" : ""}>{pct(l.ocupacao)}</span> : ""}</td>
+                      <td>{l.transportadora}</td>
+                      <td className="n">{l.entregas}</td>
+                      <td className="n">{num(l.kg)}</td>
+                      <td>{l.motorista}</td>
                       <td>{l.entregador}</td>
-                      <td>{l.destino}{l.tipoLinha !== "carga" && <b className="t-laranja"> · SEM CARGA</b>}</td>
-                      <td className="n">{moeda(l.valor)}</td>
+                      <td>{l.destino}</td>
+                      <td>{l.hora_saida ? fmtHora(l.hora_saida) : <span className="t-laranja">a sair</span>}</td>
+                      <td className="n"><CampoEditavel tipo="number" min={0} largura="4em" className="n" valor={l.cancelados || ""} aoSalvar={(v) => atualizar(l.id, { cancelados: v })} /></td>
+                      <td className="n"><CampoEditavel tipo="number" min={0} largura="4em" className="n" valor={l.reentregas || ""} aoSalvar={(v) => atualizar(l.id, { reentregas: v })} /></td>
+                      <td className="n"><CampoEditavel tipo="number" min={0} largura="4em" className="n" valor={l.pendentes || ""} aoSalvar={(v) => atualizar(l.id, { pendentes: v })} /></td>
+                      <td className="c">
+                        <input type="checkbox" checked={!!l.celular_devolvido} onChange={(e) => atualizar(l.id, { celular_devolvido: e.target.checked }).catch((er) => alert(er.message))} />
+                      </td>
+                      <td className="checkout">
+                        {ok ? (
+                          <div>
+                            <b className="t-verde">OK</b> {fmtHora(l.checkout_em)}
+                            <small title={`${fmtDataHora(l.checkout_em)} · ${l.checkout_por || ""}`}>{(l.checkout_por || "").split("@")[0]}</small>
+                            <button className="btn link" onClick={() => desfazer(l)}>desfazer</button>
+                          </div>
+                        ) : (
+                          <button className="btn primario mini" onClick={() => checkout(l)}>Checkout</button>
+                        )}
+                      </td>
                     </tr>
                   );
                 })}
