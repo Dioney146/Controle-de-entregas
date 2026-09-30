@@ -8,6 +8,7 @@ import { interpretar, textoParaLinhas } from "../lib/roadnet";
 import { useUsuario } from "../components/Casca";
 import { lerDataTrabalho, guardarDataTrabalho } from "../lib/hooks";
 import { useColunas } from "../lib/colunas";
+import { desfazerFrete } from "../lib/frete";
 import {
   hojeISO, somarDias, fmtData, num, moeda, pct, zonaDaDescricao, entregadorDoRoadnet,
 } from "../lib/util";
@@ -278,7 +279,10 @@ export default function Programacao() {
           <div>
             <b>{fmtData(data)}</b> · {rotas.length} rotas
             {qtdProgramado + qtdConfirmado > 0 && (
-              <span className="etiqueta cinza">Frete gerado: {qtdProgramado} a sair · {qtdConfirmado} já saíram</span>
+              <>
+                <span className="etiqueta cinza">Frete gerado: {qtdProgramado} a sair · {qtdConfirmado} já saíram</span>
+                <button className="btn link" onClick={async () => { if (await desfazerFrete(data)) carregar(data); }}>↩ desfazer frete</button>
+              </>
             )}
           </div>
           <div className="linha-acoes">

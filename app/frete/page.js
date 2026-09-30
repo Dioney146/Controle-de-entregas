@@ -6,6 +6,7 @@ import { sb } from "../../lib/supabase";
 import { useDataDaUrl, useNomes, useTempoReal } from "../../lib/hooks";
 import CampoEditavel from "../../components/CampoEditavel";
 import { useColunas } from "../../lib/colunas";
+import { desfazerFrete } from "../../lib/frete";
 import { fmtData, horaInput, horaParaTimestamp, num, moeda, normPlaca } from "../../lib/util";
 
 const ROTULO = { PROGRAMADO: "A sair", EM_ROTA: "Saiu", RETORNOU: "Retornou" };
@@ -51,6 +52,15 @@ export default function Frete() {
     try { await atualizar(l.id, { hora_saida: new Date().toISOString(), status: "EM_ROTA" }); } catch (e) { alert(e.message); }
   }
 
+  async function desfazerTudo() {
+    if (await desfazerFrete(data)) carregar();
+  }
+
+  async function desfazerSaida(l) {
+    if (!confirm(`Desfazer a saída de ${l.placa}? Ele volta para "A sair".`)) return;
+    try { await atualizar(l.id, { hora_saida: null, status: "PROGRAMADO", checkout_em: null, checkout_por: null }); } catch (e) { alert(e.message); }
+  }
+
   async function remover(l) {
     if (!confirm(`Remover ${l.placa} do frete?`)) return;
     const { error } = await sb().from("saidas").delete().eq("id", l.id);
@@ -91,6 +101,7 @@ export default function Frete() {
           <label className="campo-data">Data
             <input type="date" value={data} onChange={(e) => setData(e.target.value)} />
           </label>
+          <button className="btn" onClick={desfazerTudo} disabled={!linhas.length} title="Tira do frete os veículos desta data">↩ Desfazer frete</button>
           <button className="btn primario" onClick={() => window.print()} disabled={!linhas.length}>Imprimir frete</button>
         </div>
       </div>
@@ -140,7 +151,11 @@ export default function Frete() {
                       {l.status === "PROGRAMADO" && <button className="btn mini nao-imprimir" onClick={() => saiuAgora(l)}>Saiu</button>}
                     </div></td>
                     <td className="nao-imprimir"><span className={`status s-${l.status}`}>{ROTULO[l.status]}</span></td>
-                    <td className="nao-imprimir">{l.status === "PROGRAMADO" && <button className="btn link perigo" title="Remover do frete" onClick={() => remover(l)}>✕</button>}</td>
+                    <td className="nao-imprimir">
+                      {l.status === "PROGRAMADO"
+                        ? <button className="btn link perigo" title="Remover do frete" onClick={() => remover(l)}>✕</button>
+                        : <button className="btn link" title="Desfazer a saída (volta para A sair)" onClick={() => desfazerSaida(l)}>↩</button>}
+                    </td>
                   </tr>
                 ))}
               </tbody>
