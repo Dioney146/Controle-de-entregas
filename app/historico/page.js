@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { sb, buscarTudo } from "../../lib/supabase";
+import { useColunas } from "../../lib/colunas";
 import { hojeISO, somarDias, fmtData, fmtHora, fmtDataHora, num, moeda, baixarCSV } from "../../lib/util";
 
 export default function Historico() {
@@ -39,6 +40,7 @@ export default function Historico() {
     );
   }, [linhas, busca, trans, zona]);
 
+  const [refTabela, ajustarColunas] = useColunas("historico", `${carregando}-${Math.min(filtradas.length, limite)}`);
   const soma = (c) => filtradas.reduce((s, l) => s + (Number(l[c]) || 0), 0);
   const dias = new Set(filtradas.map((l) => l.data)).size;
 
@@ -90,13 +92,13 @@ export default function Historico() {
               {zonas.map((t) => <option key={t}>{t}</option>)}
             </select>
           </div>
-          <span className="sub">{filtradas.length} registro(s)</span>
+          <div className="linha-acoes"><button className="btn link" title="Volta as colunas para o auto ajuste" onClick={ajustarColunas}>↔ ajustar colunas</button><span className="sub">{filtradas.length} registro(s)</span></div>
         </div>
         {carregando ? <div className="carregando">Carregando…</div> : filtradas.length === 0 ? (
           <div className="vazio">Nenhuma saída no período.</div>
         ) : (
           <div className="tabela-rolagem">
-            <table>
+            <table ref={refTabela}>
               <thead>
                 <tr>
                   <th>Data</th><th>Zona</th><th>Placa</th><th>Trans</th><th className="n">Ent.</th><th className="n">KG</th><th>Motorista</th>

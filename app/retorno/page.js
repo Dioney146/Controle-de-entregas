@@ -5,6 +5,7 @@ import { sb } from "../../lib/supabase";
 import { useDataDaUrl, useTempoReal } from "../../lib/hooks";
 import { useUsuario } from "../../components/Casca";
 import CampoEditavel from "../../components/CampoEditavel";
+import { useColunas } from "../../lib/colunas";
 import { fmtData, fmtHora, fmtDataHora, num } from "../../lib/util";
 
 export default function Retorno() {
@@ -16,6 +17,7 @@ export default function Retorno() {
   const [antigasEmRota, setAntigasEmRota] = useState(0);
   const [filtro, setFiltro] = useState("todos"); // todos | pendentes | retornados
   const [carregando, setCarregando] = useState(true);
+  const [refTabela, ajustarColunas] = useColunas(`retorno-${modo}`, `${carregando}-${linhas.length}-${filtro}-${linhas.filter((l) => l.status === "RETORNOU").length}`);
 
   async function carregar() {
     if (!data) return;
@@ -108,13 +110,13 @@ export default function Retorno() {
               <button key={k} className={filtro === k ? "ativo" : ""} onClick={() => setFiltro(k)}>{r}</button>
             ))}
           </div>
-          <span className="sub">{visiveis.length} veículo(s)</span>
+          <div className="linha-acoes"><button className="btn link" title="Volta as colunas para o auto ajuste" onClick={ajustarColunas}>↔ ajustar colunas</button><span className="sub">{visiveis.length} veículo(s)</span></div>
         </div>
         {carregando ? <div className="carregando">Carregando…</div> : visiveis.length === 0 ? (
           <div className="vazio">Nenhum veículo {modo === "emrota" ? "em rota" : `saiu em ${fmtData(data)}`}.</div>
         ) : (
           <div className="tabela-rolagem">
-            <table className="retorno">
+            <table className="retorno" ref={refTabela}>
               <thead>
                 <tr>
                   {modo === "emrota" && <th>Data</th>}

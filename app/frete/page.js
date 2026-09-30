@@ -5,6 +5,7 @@ import Link from "next/link";
 import { sb } from "../../lib/supabase";
 import { useDataDaUrl, useNomes, useTempoReal } from "../../lib/hooks";
 import CampoEditavel from "../../components/CampoEditavel";
+import { useColunas } from "../../lib/colunas";
 import { fmtData, horaInput, horaParaTimestamp, num, moeda, normPlaca } from "../../lib/util";
 
 const ROTULO = { PROGRAMADO: "A sair", EM_ROTA: "Saiu", RETORNOU: "Retornou" };
@@ -16,6 +17,7 @@ export default function Frete() {
   const [carregando, setCarregando] = useState(true);
   const [novaPlaca, setNovaPlaca] = useState("");
   const nomes = useNomes();
+  const [refTabela, ajustarColunas] = useColunas("frete", `${carregando}-${linhas.length}`);
 
   async function carregar() {
     if (!data) return;
@@ -111,7 +113,7 @@ export default function Frete() {
           <div className="vazio">Nenhum frete para {fmtData(data)}. Vá em <Link href="/">Programação</Link> e clique em <b>Gerar frete</b>.</div>
         ) : (
           <div className="tabela-rolagem">
-            <table className="frete">
+            <table className="frete" ref={refTabela}>
               <thead>
                 <tr>
                   <th>Data</th><th>Zona</th><th>Placa</th><th>Trans</th><th className="n">Ent.</th><th className="n">KG</th>
@@ -157,6 +159,7 @@ export default function Frete() {
           <div className="linha-acoes">
             <input list="lista-placas" className="campo" placeholder="Adicionar placa ao frete…" value={novaPlaca} onChange={(e) => setNovaPlaca(e.target.value.toUpperCase())} />
             <button className="btn" onClick={adicionar} disabled={!novaPlaca}>Adicionar</button>
+            <button className="btn link" title="Volta as colunas para o auto ajuste" onClick={ajustarColunas}>↔ ajustar colunas</button>
           </div>
           {linhas.length > 0 && <Link className="btn" href={`/retorno?data=${data}`}>Ir para o Retorno →</Link>}
         </div>

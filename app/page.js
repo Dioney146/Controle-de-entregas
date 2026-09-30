@@ -7,6 +7,7 @@ import { sb, buscarTudo } from "../lib/supabase";
 import { interpretar, textoParaLinhas } from "../lib/roadnet";
 import { useUsuario } from "../components/Casca";
 import { lerDataTrabalho, guardarDataTrabalho } from "../lib/hooks";
+import { useColunas } from "../lib/colunas";
 import {
   hojeISO, somarDias, fmtData, num, moeda, pct, zonaDaDescricao, entregadorDoRoadnet,
 } from "../lib/util";
@@ -86,6 +87,8 @@ export default function Programacao() {
     const ordenar = (a, b) => (a.transportadora || "zzz").localeCompare(b.transportadora || "zzz") || a.placa.localeCompare(b.placa);
     return comRota.sort((x, y) => (x.tipoLinha === y.tipoLinha ? ordenar(x, y) : x.tipoLinha === "carga" ? -1 : 1));
   }, [rotas, mapaVeic]);
+
+  const [refTabela, ajustarColunas] = useColunas("programacao", `${carregando}-${linhas.length}-${mostrarSemCarga}`);
 
   const comCarga = linhas.filter((l) => l.tipoLinha === "carga");
   const semCarga = linhas.filter((l) => l.tipoLinha !== "carga");
@@ -279,6 +282,7 @@ export default function Programacao() {
             )}
           </div>
           <div className="linha-acoes">
+            <button className="btn link" title="Volta as colunas para o auto ajuste" onClick={ajustarColunas}>↔ ajustar colunas</button>
             <label className="check"><input type="checkbox" checked={mostrarSemCarga} onChange={(e) => setMostrarSemCarga(e.target.checked)} /> mostrar sem carga</label>
             <button className="btn primario" disabled={!selecionadas.length} onClick={gerarFrete}>
               Gerar frete com {selecionadas.length} veículo(s) →
@@ -289,7 +293,7 @@ export default function Programacao() {
           <div className="vazio">Nenhuma programação para {fmtData(data)}. Clique em <b>Colar do RoadNet</b>.</div>
         ) : (
           <div className="tabela-rolagem">
-            <table className="prog">
+            <table className="prog" ref={refTabela}>
               <thead>
                 <tr>
                   <th title="Entra no frete">Sai?</th><th>Trans.</th><th>Equipam.</th><th>Tipo</th><th className="n">E</th>

@@ -104,7 +104,7 @@ textarea.colar {
 .previa { margin-top: 12px; }
 
 .campo-ed {
-  width: 100%; min-width: 60px; border: 1px solid transparent; background: transparent; padding: 4px 6px;
+  width: 100%; min-width: 0; border: 1px solid transparent; background: transparent; padding: 4px 6px;
   border-radius: 5px; font: inherit; color: inherit;
 }
 .campo-ed:hover { border-color: var(--borda); background: #fff; }
@@ -120,6 +120,15 @@ textarea.colar {
 .alternar { display: inline-flex; border: 1px solid var(--borda); border-radius: 7px; overflow: hidden; background: #fff; }
 .alternar button { border: 0; background: none; padding: 7px 12px; font: inherit; cursor: pointer; color: var(--suave); font-weight: 600; }
 .alternar button.ativo { background: var(--primaria); color: #fff; }
+
+/* ---------- colunas ajustáveis ---------- */
+th { overflow: hidden; text-overflow: ellipsis; }
+th > .alca-col { pointer-events: auto; }
+.alca-col { position: absolute; top: 0; right: 0; width: 6px; height: 100%; cursor: col-resize; z-index: 2; }
+.alca-col:hover, .alca-col.ativa { background: var(--primaria); opacity: .5; }
+table.medindo input.campo-ed:not(.hora) { width: 10px !important; }
+table.medindo td, table.medindo th { overflow: visible; }
+.tabela-rolagem > table { min-width: 0; }
 
 /* ---------- alertas / etiquetas ---------- */
 .alerta { padding: 10px 14px; border-radius: 8px; margin-bottom: 12px; border: 1px solid; cursor: default; }
@@ -147,7 +156,7 @@ th {
   letter-spacing: .3px; color: #34404f; padding: 5px 6px; white-space: nowrap; z-index: 1;
   border-right: 1px solid #c3ccd6; border-bottom: 1px solid #aeb9c5;
 }
-td { padding: 2px 6px; height: 26px; white-space: nowrap; vertical-align: middle; border-right: 1px solid #d3dae2; border-bottom: 1px solid #d3dae2; }
+td { padding: 2px 6px; height: 26px; white-space: nowrap; vertical-align: middle; overflow: hidden; text-overflow: ellipsis; border-right: 1px solid #d3dae2; border-bottom: 1px solid #d3dae2; }
 th:first-child, td:first-child { border-left: 1px solid #d3dae2; }
 tbody tr:hover td { filter: brightness(.95); }
 th.n, td.n { text-align: right; font-variant-numeric: tabular-nums; }
@@ -189,6 +198,9 @@ tr.l-fora td { opacity: .45; }
   .conteudo { padding: 0; max-width: none; }
   .cartao { border: 0; padding: 0; }
   .tabela-rolagem { overflow: visible; max-height: none; }
+  table { width: 100% !important; table-layout: auto !important; }
+  th { width: auto !important; }
+  .alca-col { display: none; }
   th { position: static; background: #ddd !important; color: #000; border: 1px solid #000; padding: 4px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   td { border: 1px solid #000; padding: 3px 4px; white-space: normal; }
   tr.l-verde td { background: none; }

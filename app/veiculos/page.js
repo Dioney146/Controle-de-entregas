@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { sb } from "../../lib/supabase";
 import CampoEditavel from "../../components/CampoEditavel";
+import { useColunas } from "../../lib/colunas";
 import { normPlaca } from "../../lib/util";
 
 const TIPOS = ["VAN", "FIORINO", "HR", "3/4", "TOCO", "TRUCK", "CARRETA", "CAVALO"];
@@ -51,6 +52,7 @@ export default function Veiculos() {
 
   const transportadoras = useMemo(() => [...new Set(lista.map((v) => v.transportadora).filter(Boolean))].sort(), [lista]);
   const b = busca.trim().toUpperCase();
+  const [refTabela, ajustarColunas] = useColunas("veiculos", `${carregando}-${lista.length}-${busca ? 1 : 0}`);
   const visiveis = lista.filter((v) => !b || [v.placa, v.transportadora, v.motorista, v.tipo].some((x) => (x || "").toUpperCase().includes(b)));
 
   return (
@@ -76,11 +78,11 @@ export default function Veiculos() {
       <section className="cartao sem-pad">
         <div className="barra-tabela">
           <input className="campo" placeholder="Buscar…" value={busca} onChange={(e) => setBusca(e.target.value)} />
-          <span className="sub">{lista.length} veículos</span>
+          <div className="linha-acoes"><button className="btn link" title="Volta as colunas para o auto ajuste" onClick={ajustarColunas}>↔ ajustar colunas</button><span className="sub">{lista.length} veículos</span></div>
         </div>
         {carregando ? <div className="carregando">Carregando…</div> : (
           <div className="tabela-rolagem">
-            <table>
+            <table ref={refTabela}>
               <thead><tr><th>Transportadora</th><th>Placa</th><th>Tipo</th><th>Motorista fixo</th><th>Entregador fixo</th><th>Obs</th><th></th></tr></thead>
               <tbody>
                 {visiveis.map((v) => (
