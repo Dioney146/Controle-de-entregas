@@ -214,6 +214,25 @@ tr.l-fora td { opacity: .45; }
 }
 
 /* ---------- impressão (frete para a portaria) ---------- */
+/* ---------- modo compacto: linhas baixas para caber tudo na tela ---------- */
+@media screen {
+  table { font-size: 12.5px; }
+  th { padding: 3px 6px; }
+  td { height: 21px; padding: 0 6px; line-height: 1.2; }
+  .campo-ed { height: 19px; padding: 0 5px; line-height: 17px; font-size: 12.5px; }
+  .campo-ed.hora { height: 19px; padding: 0 4px; }
+  td .btn.mini { padding: 0 8px; height: 18px; font-size: .74rem; line-height: 16px; }
+  td .btn.link { padding: 0 3px; }
+  td .status { padding: 1px 7px; font-size: .7rem; }
+  td input[type="checkbox"] { margin: 0; width: 14px; height: 14px; vertical-align: middle; }
+  .saida-box { gap: 4px; }
+  .kpi { min-height: 30px; padding: 2px 12px; }
+  .kpis { margin-bottom: 6px; }
+  .cabecalho-pagina { margin-bottom: 6px; }
+  .barra-tabela { padding: 4px 10px; }
+  .tabela-rolagem { max-height: calc(100vh - 150px); }
+}
+
 @page { size: A4 landscape; margin: 8mm; }
 @media print {
   body { background: #fff; font-size: 10.5px; }
