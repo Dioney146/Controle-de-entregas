@@ -7,7 +7,7 @@ import { useUsuario } from "../../components/Casca";
 import CampoEditavel from "../../components/CampoEditavel";
 import { useFiltros, ThFiltro } from "../../components/FiltroColuna";
 import { useColunas } from "../../lib/colunas";
-import { fmtData, fmtHora, fmtDataHora, num } from "../../lib/util";
+import { fmtData, fmtHora, fmtDataHora, num, corTrans } from "../../lib/util";
 
 const COLUNAS = {
   data: { valor: (l) => l.data },
@@ -156,9 +156,9 @@ export default function Retorno() {
                   const ok = l.status === "RETORNOU";
                   return (
                     <tr key={l.id} className={ok ? "l-verde" : ""}>
-                      {modo === "emrota" && <td>{fmtData(l.data).slice(0, 5)}</td>}
+                      {modo === "emrota" && <td className="c-data">{fmtData(l.data).slice(0, 5)}</td>}
                       <td className="placa">{l.placa}</td>
-                      <td>{l.transportadora}</td>
+                      <td className={corTrans(l.transportadora)}>{l.transportadora}</td>
                       <td className="n">{l.entregas}</td>
                       <td className="n">{num(l.kg)}</td>
                       <td>{l.motorista}</td>

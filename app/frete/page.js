@@ -10,7 +10,7 @@ import { desfazerFrete } from "../../lib/frete";
 import { useFiltros, ThFiltro } from "../../components/FiltroColuna";
 import SeletorPessoa, { usePessoas } from "../../components/SeletorPessoa";
 import { useUsuario } from "../../components/Casca";
-import { fmtData, horaInput, horaParaTimestamp, num, moeda, normPlaca } from "../../lib/util";
+import { fmtData, horaInput, horaParaTimestamp, num, moeda, normPlaca, corTrans } from "../../lib/util";
 
 const ROTULO = { PROGRAMADO: "A sair", EM_ROTA: "Saiu", RETORNOU: "Retornou" };
 
@@ -231,10 +231,10 @@ export default function Frete() {
               <tbody>
                 {exibidas.map((l) => (
                   <tr key={l.id} className={`${l.status === "PROGRAMADO" ? "" : "l-verde"} ${l.arquivado ? "l-arquivado" : ""} ${verPendencias && !l.arquivado && pendencias(l).length ? "l-pendente" : ""}`}>
-                    <td>{fmtData(l.data).slice(0, 5)}</td>
+                    <td className="c-data">{fmtData(l.data).slice(0, 5)}</td>
                     <td><CampoEditavel valor={l.zona} largura="6em" aoSalvar={(v) => atualizar(l.id, { zona: v })} /></td>
                     <td className="placa">{l.placa}</td>
-                    <td>{l.transportadora}</td>
+                    <td className={corTrans(l.transportadora)}>{l.transportadora}</td>
                     <td className="n"><CampoEditavel tipo="number" min={0} valor={l.entregas ?? ""} largura="4em" className="n" aoSalvar={(v) => atualizar(l.id, { entregas: v })} /></td>
                     <td className="n">{num(l.kg)}</td>
                     <td><SeletorPessoa lista={pessoas} funcao="MOTORISTA" valor={l.motorista} placeholder="motorista…" aoSalvar={(v) => atualizar(l.id, { motorista: v })} /></td>

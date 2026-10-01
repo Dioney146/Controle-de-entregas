@@ -210,7 +210,22 @@ th {
 }
 td { padding: 2px 6px; height: 26px; white-space: nowrap; vertical-align: middle; overflow: hidden; text-overflow: ellipsis; border-right: 1px solid #d3dae2; border-bottom: 1px solid #d3dae2; }
 th:first-child, td:first-child { border-left: 1px solid #d3dae2; }
-tbody tr:hover td { filter: brightness(.95); }
+tbody tr:hover td { filter: brightness(.97); }
+
+/* foco na célula sob o mouse (verde claro) */
+table tbody td:hover { background-color: #c9f0c4 !important; color: #12361a !important; filter: none; box-shadow: inset 0 0 0 1px #6cc463; }
+
+/* coluna DATA: laranja claro */
+table tbody td.c-data { background-color: #fde3c8; }
+
+/* coluna TRANS: cor por transportadora */
+table tbody td.ct-mamba  { background-color: #7fcf86; color: #0f3d14; font-weight: 600; }
+table tbody td.ct-hok    { background-color: #cfe6fb; color: #0b3a66; font-weight: 600; }
+table tbody td.ct-cmg    { background-color: #e3e6ea; color: #333d48; font-weight: 600; }
+table tbody td.ct-jb     { background-color: #ffffff; color: #1d2733; font-weight: 600; }
+table tbody td.ct-ralph  { background-color: #fdd7b0; color: #6b3500; font-weight: 600; }
+table tbody td.ct-amorim { background-color: #1f3f74; color: #ffffff; font-weight: 600; }
+
 th.n, td.n { text-align: right; font-variant-numeric: tabular-nums; }
 td.c { text-align: center; }
 td.placa { font-family: Consolas, monospace; font-weight: 700; letter-spacing: .5px; }
@@ -278,7 +293,7 @@ tr.l-fora td { opacity: .45; }
   td { border: 1px solid #000; padding: 0 4px; height: var(--linha-imp, 6mm); line-height: 1.1; white-space: nowrap; overflow: visible; }
   tfoot td { position: static; }
   .cartao, .conteudo { margin: 0; }
-  tr.l-verde td { background: none; }
+  tr.l-verde td, td.c-data, td.ct { background: none !important; color: #000 !important; }
   .campo-ed { border: 0 !important; background: none !important; padding: 0; min-width: 0; appearance: none; }
   .campo-ed::placeholder { color: transparent; }
   input[type="time"]::-webkit-calendar-picker-indicator { display: none; }

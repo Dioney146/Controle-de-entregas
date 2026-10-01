@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { sb } from "../../lib/supabase";
 import CampoEditavel from "../../components/CampoEditavel";
 import { useColunas } from "../../lib/colunas";
-import { normPlaca } from "../../lib/util";
+import { normPlaca, corTrans } from "../../lib/util";
 
 const TIPOS = ["VAN", "FIORINO", "HR", "3/4", "TOCO", "TRUCK", "CARRETA", "CAVALO"];
 const VAZIO = { placa: "", transportadora: "", tipo: "", motorista: "", entregador: "", ativo: true, obs: "" };
@@ -87,7 +87,7 @@ export default function Veiculos() {
               <tbody>
                 {visiveis.map((v) => (
                   <tr key={v.placa}>
-                    <td><CampoEditavel valor={v.transportadora} lista="lista-trans" aoSalvar={(x) => atualizar(v.placa, { transportadora: x })} /></td>
+                    <td className={corTrans(v.transportadora)}><CampoEditavel valor={v.transportadora} lista="lista-trans" aoSalvar={(x) => atualizar(v.placa, { transportadora: x })} /></td>
                     <td className="placa">{v.placa}</td>
                     <td><CampoEditavel valor={v.tipo} lista="lista-tipos" largura="6em" aoSalvar={(x) => atualizar(v.placa, { tipo: x })} /></td>
                     <td><CampoEditavel valor={v.motorista} aoSalvar={(x) => atualizar(v.placa, { motorista: x })} /></td>

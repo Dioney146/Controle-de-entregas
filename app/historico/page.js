@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { sb, buscarTudo } from "../../lib/supabase";
 import { useColunas } from "../../lib/colunas";
 import { useFiltros, ThFiltro } from "../../components/FiltroColuna";
-import { fmtData, fmtHora, fmtDataHora, num, moeda, baixarCSV } from "../../lib/util";
+import { fmtData, fmtHora, fmtDataHora, num, moeda, baixarCSV, corTrans } from "../../lib/util";
 
 // colunas filtráveis / classificáveis (igual ao Excel)
 const COLUNAS = {
@@ -133,7 +133,7 @@ export default function Historico() {
               <tbody>
                 {filtradas.slice(0, limite).map((l) => (
                   <tr key={l.id}>
-                    <td>{fmtData(l.data)}</td><td>{l.zona}</td><td className="placa">{l.placa}</td><td>{l.transportadora}</td>
+                    <td className="c-data">{fmtData(l.data)}</td><td>{l.zona}</td><td className="placa">{l.placa}</td><td className={corTrans(l.transportadora)}>{l.transportadora}</td>
                     <td className="n">{l.entregas}</td><td className="n">{num(l.kg)}</td><td>{l.motorista}</td><td>{l.entregador}</td>
                     <td>{l.destino}</td><td className="n">{moeda(l.valor)}</td><td>{fmtHora(l.hora_saida) || l.obs}</td>
                     <td className="n">{l.cancelados || ""}</td><td className="n">{l.reentregas || ""}</td><td className="n">{l.pendentes || ""}</td>
