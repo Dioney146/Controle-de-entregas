@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { sb, buscarTudo } from "../lib/supabase";
-import { interpretar, textoParaLinhas, dataDaSessao } from "../lib/roadnet";
+import { interpretar, textoParaLinhas } from "../lib/roadnet";
 import { useUsuario } from "../components/Casca";
 import { guardarDataTrabalho } from "../lib/hooks";
 import { useColunas } from "../lib/colunas";
@@ -34,13 +34,17 @@ export default function Programacao() {
   const [incluidasSemCarga, setIncluidasSemCarga] = useState({}); // placa -> true
   const [mostrarSemCarga, setMostrarSemCarga] = useState(true);
 
-  // A Programação mostra TUDO o que foi importado do RoadNet (a última base colada), sem filtro de data
+  // A Programação mostra SÓ a última base importada do RoadNet (igual para todo mundo).
+  // Não guarda histórico: cada importação substitui a anterior.
   async function carregar() {
     setCarregando(true);
-    const [r, v] = await Promise.all([
-      buscarTudo(() => sb().from("programacao").select("*").order("data").order("id")),
+    const [todas, v] = await Promise.all([
+      buscarTudo(() => sb().from("programacao").select("*").order("id")),
       buscarTudo(() => sb().from("veiculos").select("*").order("transportadora").order("placa")),
     ]);
+    // garante que aparece apenas o último lote importado (mesmo que sobre algo antigo no banco)
+    const ultimo = (todas || []).reduce((m, x) => (x.created_at > m ? x.created_at : m), "");
+    const r = (todas || []).filter((x) => x.created_at === ultimo);
     const datas = [...new Set((r || []).map((x) => x.data))];
     const s = datas.length
       ? await sb().from("saidas").select("id,placa,status,data").in("data", datas)
@@ -132,13 +136,15 @@ export default function Programacao() {
     setSalvando(true);
     const del = await sb().from("programacao").delete().gte("id", 0);
     if (del.error) { setSalvando(false); return setMsg({ tipo: "erro", txt: del.error.message }); }
-    // cada rota fica com a data da sua sessão de roteirização; sem sessão, usa a data padrão
-    const linhasNovas = previa.rotas.map((r) => ({ ...r, data: dataDaSessao(r.sessao) || dataImport, created_by: email }));
-    const ins = await sb().from("programacao").insert(linhasNovas);
+    // todas as rotas da base ficam com a mesma data de saída (a escolhida na importação)
+    const linhasNovas = previa.rotas.map((r) => ({ ...r, data: dataImport, created_by: email }));
+    const ins = await sb().from("programacao").insert(linhasNovas).select("created_at").limit(1);
+    if (ins.error) { setSalvando(false); return setMsg({ tipo: "erro", txt: ins.error.message }); }
+    // limpeza: apaga qualquer coisa mais antiga que tenha sobrado
+    const marca = ins.data?.[0]?.created_at;
+    if (marca) await sb().from("programacao").delete().lt("created_at", marca);
     setSalvando(false);
-    if (ins.error) return setMsg({ tipo: "erro", txt: ins.error.message });
-    const ds = [...new Set(linhasNovas.map((r) => r.data))].sort().map(fmtData).join(", ");
-    setMsg({ tipo: "ok", txt: `Programação importada: ${previa.rotas.length} rotas (saída ${ds}).` });
+    setMsg({ tipo: "ok", txt: `Programação importada: ${previa.rotas.length} rotas (saída ${fmtData(dataImport)}).` });
     setTexto(""); setPrevia(null); setAbrirImport(false);
     carregar();
   }
@@ -226,7 +232,7 @@ export default function Programacao() {
               <p><b>{previa.rotas.length}</b> rotas lidas · <b>{previa.rotas.filter((r) => (r.paradas || 0) > 0).length}</b> com carga · peso {num(previa.rotas.reduce((s, r) => s + (r.peso || 0), 0))} kg</p>
               {previa.rotas.length > 0 && (
                 <div className="linha-acoes">
-                  <label className="campo-data" title="Usada só para rotas sem data na Sessão de roteirização">Data padrão de saída
+                  <label className="campo-data" title="Vem da Sessão de roteirização do RoadNet; pode trocar se precisar">Data de saída
                     <input type="date" value={dataImport} onChange={(e) => setDataImport(e.target.value)} />
                   </label>
                   <button className="btn primario" onClick={salvarProgramacao} disabled={salvando || !dataImport}>
