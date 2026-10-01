@@ -125,7 +125,7 @@ export default function Pessoas() {
               </thead>
               <tbody>
                 {visiveis.map((p) => (
-                  <tr key={p.id} data-id={p.id} className={p.ativo ? "" : "l-fora"}>
+                  <tr key={p.id} data-id={p.id} data-ref={p.nome} className={p.ativo ? "" : "l-fora"}>
                     <td className="c">
                       <input type="checkbox" checked={marcados.has(p.id)} onChange={() => {
                         const n = new Set(marcados); n.has(p.id) ? n.delete(p.id) : n.add(p.id); setMarcados(n);
