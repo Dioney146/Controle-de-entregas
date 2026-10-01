@@ -113,7 +113,7 @@ export default function Pessoas() {
         </div>
         {carregando ? <div className="carregando">Carregando…</div> : (
           <div className="tabela-rolagem">
-            <table ref={refTabela}>
+            <table ref={refTabela} data-tabela="pessoas">
               <thead>
                 <tr>
                   <th><input type="checkbox" checked={todosMarcados} onChange={alternarTodos} /></th>
@@ -125,7 +125,7 @@ export default function Pessoas() {
               </thead>
               <tbody>
                 {visiveis.map((p) => (
-                  <tr key={p.id} className={p.ativo ? "" : "l-fora"}>
+                  <tr key={p.id} data-id={p.id} className={p.ativo ? "" : "l-fora"}>
                     <td className="c">
                       <input type="checkbox" checked={marcados.has(p.id)} onChange={() => {
                         const n = new Set(marcados); n.has(p.id) ? n.delete(p.id) : n.add(p.id); setMarcados(n);

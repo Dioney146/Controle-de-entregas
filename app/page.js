@@ -301,7 +301,7 @@ export default function Programacao() {
           <div className="vazio">Nenhuma programação importada. Clique em <b>Colar do RoadNet</b>.</div>
         ) : (
           <div className="tabela-rolagem">
-            <table className="prog" ref={refTabela}>
+            <table className="prog" ref={refTabela} data-tabela="prog">
               <thead>
                 <tr>
                   <th title="Entra no frete">Sai?</th><th>Data</th><th>Trans.</th><th>Equipam.</th><th>Tipo</th><th className="n">E</th>
@@ -312,7 +312,7 @@ export default function Programacao() {
                 {linhas.filter((l) => mostrarSemCarga || l.tipoLinha === "carga").map((l) => {
                   const reservado = /RESERVAD/i.test(l.destino || "");
                   return (
-                    <tr key={l.chave} className={`${l.tipoLinha === "carga" ? "l-verde" : "l-laranja"} ${reservado ? "l-reservado" : ""} ${vaiSair(l) ? "" : "l-fora"}`}>
+                    <tr key={l.chave} data-id={l.chave} className={`${l.tipoLinha === "carga" ? "l-verde" : "l-laranja"} ${reservado ? "l-reservado" : ""} ${vaiSair(l) ? "" : "l-fora"}`}>
                       <td>
                         <input type="checkbox" checked={vaiSair(l)} onChange={(e) => {
                           if (l.tipoLinha === "carga") setExcluidas({ ...excluidas, [l.chave]: !e.target.checked });

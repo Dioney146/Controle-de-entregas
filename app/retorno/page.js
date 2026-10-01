@@ -132,7 +132,7 @@ export default function Retorno() {
           <div className="vazio">Nenhum veículo {modo === "emrota" ? "pendente" : `no frete de ${fmtData(data)}`}.</div>
         ) : (
           <div className="tabela-rolagem">
-            <table className="retorno" ref={refTabela}>
+            <table className="retorno" ref={refTabela} data-tabela="retorno">
               <thead>
                 <tr>
                   {modo === "emrota" && <ThFiltro f={f} col="data" linhas={porAba}>Data</ThFiltro>}
@@ -155,7 +155,7 @@ export default function Retorno() {
                 {visiveis.map((l) => {
                   const ok = l.status === "RETORNOU";
                   return (
-                    <tr key={l.id} className={ok ? "l-verde" : ""}>
+                    <tr key={l.id} data-id={l.id} className={ok ? "l-verde" : ""}>
                       {modo === "emrota" && <td className="c-data">{fmtData(l.data).slice(0, 5)}</td>}
                       <td className="placa">{l.placa}</td>
                       <td className={corTrans(l.transportadora)}>{l.transportadora}</td>

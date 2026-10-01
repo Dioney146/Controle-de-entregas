@@ -82,11 +82,11 @@ export default function Veiculos() {
         </div>
         {carregando ? <div className="carregando">Carregando…</div> : (
           <div className="tabela-rolagem">
-            <table ref={refTabela}>
+            <table ref={refTabela} data-tabela="veiculos">
               <thead><tr><th>Transportadora</th><th>Placa</th><th>Tipo</th><th>Motorista fixo</th><th>Entregador fixo</th><th>Obs</th><th></th></tr></thead>
               <tbody>
                 {visiveis.map((v) => (
-                  <tr key={v.placa}>
+                  <tr key={v.placa} data-id={v.placa}>
                     <td className={corTrans(v.transportadora)}><CampoEditavel valor={v.transportadora} lista="lista-trans" aoSalvar={(x) => atualizar(v.placa, { transportadora: x })} /></td>
                     <td className="placa">{v.placa}</td>
                     <td><CampoEditavel valor={v.tipo} lista="lista-tipos" largura="6em" aoSalvar={(x) => atualizar(v.placa, { tipo: x })} /></td>

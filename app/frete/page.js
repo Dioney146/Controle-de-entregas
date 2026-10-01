@@ -210,7 +210,7 @@ export default function Frete() {
           <div className="vazio">Nenhum frete para {fmtData(data)}. Vá em <Link href="/">Programação</Link> e clique em <b>Gerar frete</b>.</div>
         ) : (
           <div className="tabela-rolagem">
-            <table className="frete" ref={refTabela}>
+            <table className="frete" ref={refTabela} data-tabela="frete">
               <thead>
                 <tr>
                   <ThFiltro f={f} col="data" linhas={linhas}>Data</ThFiltro>
@@ -230,7 +230,7 @@ export default function Frete() {
               </thead>
               <tbody>
                 {exibidas.map((l) => (
-                  <tr key={l.id} className={`${l.status === "PROGRAMADO" ? "" : "l-verde"} ${l.arquivado ? "l-arquivado" : ""} ${verPendencias && !l.arquivado && pendencias(l).length ? "l-pendente" : ""}`}>
+                  <tr key={l.id} data-id={l.id} className={`${l.status === "PROGRAMADO" ? "" : "l-verde"} ${l.arquivado ? "l-arquivado" : ""} ${verPendencias && !l.arquivado && pendencias(l).length ? "l-pendente" : ""}`}>
                     <td className="c-data">{fmtData(l.data).slice(0, 5)}</td>
                     <td><CampoEditavel valor={l.zona} largura="6em" aoSalvar={(v) => atualizar(l.id, { zona: v })} /></td>
                     <td className="placa">{l.placa}</td>

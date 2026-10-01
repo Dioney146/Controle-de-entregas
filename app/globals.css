@@ -184,6 +184,33 @@ th.filtrado .btn-filtro { background: var(--primaria); border-color: var(--prima
 tr.l-arquivado td { background: #e9eef3; color: #44505e; }
 tr.l-pendente td { background: var(--vermelho-fundo) !important; }
 
+/* ---------- presença: quem está no site e em qual célula ---------- */
+.avatar {
+  display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 50%;
+  color: #fff; font-size: 11px; font-weight: 800; border: 2px solid rgba(255,255,255,.85); flex: 0 0 auto;
+}
+.presenca { display: flex; align-items: center; gap: 0; margin-left: auto; }
+.presenca .avatar { margin-left: -6px; cursor: default; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+.presenca .avatar:first-child { margin-left: 0; }
+.presenca .avatar.outra-pagina { opacity: .45; }
+.presenca-so { font-size: .78rem; color: #9fb1c4; }
+.usuario .nome-logado { font-weight: 700; font-size: .82rem; }
+.marcador {
+  position: fixed; pointer-events: none; border: 2px solid; border-radius: 2px; z-index: 50;
+  transition: top .12s, left .12s, width .12s, height .12s;
+}
+.marcador span {
+  position: absolute; top: -15px; left: -2px; color: #fff; font-size: 10px; font-weight: 800;
+  padding: 0 5px; line-height: 14px; border-radius: 3px 3px 3px 0; white-space: nowrap;
+}
+.recentes { display: flex; flex-direction: column; gap: 6px; }
+.recente {
+  display: flex; align-items: center; gap: 10px; border: 1px solid var(--borda); background: #fff; border-radius: 8px;
+  padding: 6px 10px; cursor: pointer; font: inherit; font-weight: 700; text-align: left;
+}
+.recente:hover { border-color: var(--primaria); background: #f3f8fd; }
+@media print { .marcador { display: none; } }
+
 /* ---------- alertas / etiquetas ---------- */
 .alerta { padding: 10px 14px; border-radius: 8px; margin-bottom: 12px; border: 1px solid; cursor: default; }
 .alerta.ok { background: var(--verde-fundo); border-color: #a9dcbc; }

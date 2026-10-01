@@ -109,7 +109,7 @@ export default function Historico() {
           <div className="vazio">Nada no histórico ainda. No Frete/Saídas, clique em <b>✓ Enviar para o histórico</b>.</div>
         ) : (
           <div className="tabela-rolagem">
-            <table ref={refTabela}>
+            <table ref={refTabela} data-tabela="historico">
               <thead>
                 <tr>
                   <ThFiltro f={f} col="data" linhas={base}>Data</ThFiltro>
@@ -132,7 +132,7 @@ export default function Historico() {
               </thead>
               <tbody>
                 {filtradas.slice(0, limite).map((l) => (
-                  <tr key={l.id}>
+                  <tr key={l.id} data-id={l.id}>
                     <td className="c-data">{fmtData(l.data)}</td><td>{l.zona}</td><td className="placa">{l.placa}</td><td className={corTrans(l.transportadora)}>{l.transportadora}</td>
                     <td className="n">{l.entregas}</td><td className="n">{num(l.kg)}</td><td>{l.motorista}</td><td>{l.entregador}</td>
                     <td>{l.destino}</td><td className="n">{moeda(l.valor)}</td><td>{fmtHora(l.hora_saida) || l.obs}</td>
