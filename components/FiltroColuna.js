@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 
 // Filtro e classificação por coluna, no estilo do Excel.
 // Uso:
-//   const f = useFiltros(COLUNAS)                       // COLUNAS = { chave: { valor: (linha) => ..., numero?: true } }
+//   const f = useFiltros(COLUNAS)   // COLUNAS = { chave: { valor: (linha) => ..., numero?: true, rotulo?: (v) => texto mostrado } }
 //   const visiveis = f.aplicar(linhas)
 //   <ThFiltro f={f} col="zona" linhas={linhas}>Zona</ThFiltro>
 
@@ -93,15 +93,16 @@ function PainelFiltro({ f, col, def, linhas, pos, fechar }) {
   const [marcados, setMarcados] = useState(() => new Set(f.filtros[col] ? [...f.filtros[col]] : valores.map((v) => v[0])));
 
   useEffect(() => {
-    const fora = (e) => { if (painel.current && !painel.current.contains(e.target)) fechar(); };
+    const fora = (e) => { if (painel.current && !e.composedPath().includes(painel.current)) fechar(); };
     const esc = (e) => { if (e.key === "Escape") fechar(); };
-    setTimeout(() => document.addEventListener("mousedown", fora), 0);
+    const t = setTimeout(() => document.addEventListener("mousedown", fora), 0);
     document.addEventListener("keydown", esc);
-    return () => { document.removeEventListener("mousedown", fora); document.removeEventListener("keydown", esc); };
+    return () => { clearTimeout(t); document.removeEventListener("mousedown", fora); document.removeEventListener("keydown", esc); };
   }, []);
 
   const b = busca.trim().toUpperCase();
-  const lista = valores.filter(([v]) => !b || v.toUpperCase().includes(b));
+  const mostrar = (v) => (def.rotulo && v !== VAZIO ? def.rotulo(v) : v);
+  const lista = valores.filter(([v]) => !b || String(mostrar(v)).toUpperCase().includes(b));
   const todosMarcados = lista.every(([v]) => marcados.has(v));
 
   function alternar(v) {
@@ -145,7 +146,7 @@ function PainelFiltro({ f, col, def, linhas, pos, fechar }) {
         {lista.map(([v, n]) => (
           <label key={v} className="pf-valor">
             <input type="checkbox" checked={marcados.has(v)} onChange={() => alternar(v)} />
-            <span>{v}</span><small>{n}</small>
+            <span>{mostrar(v)}</span><small>{n}</small>
           </label>
         ))}
       </div>

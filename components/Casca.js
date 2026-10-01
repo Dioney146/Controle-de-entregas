@@ -15,6 +15,7 @@ const MENU = [
   { href: "/retorno", rotulo: "Retorno" },
   { href: "/historico", rotulo: "Histórico" },
   { href: "/veiculos", rotulo: "Veículos" },
+  { href: "/pessoas", rotulo: "Motoristas / Entregadores" },
 ];
 
 function lerNome() {
