@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { sb } from "../../lib/supabase";
 import CampoEditavel from "../../components/CampoEditavel";
+import { useTempoReal } from "../../lib/hooks";
 import { useColunas } from "../../lib/colunas";
 import { normPlaca, corTrans } from "../../lib/util";
 
@@ -25,6 +26,7 @@ export default function Veiculos() {
     const p = new URLSearchParams(window.location.search).get("nova");
     if (p) setNovo({ ...VAZIO, placa: normPlaca(p) });
   }, []);
+  useTempoReal(carregar, []);
 
   async function atualizar(placa, campos) {
     const { error } = await sb().from("veiculos").update(campos).eq("placa", placa);

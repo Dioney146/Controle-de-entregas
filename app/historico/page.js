@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { sb, buscarTudo } from "../../lib/supabase";
 import { useColunas } from "../../lib/colunas";
+import { useTempoReal } from "../../lib/hooks";
 import { useFiltros, ThFiltro } from "../../components/FiltroColuna";
 import { fmtData, fmtHora, fmtDataHora, num, moeda, baixarCSV, corTrans } from "../../lib/util";
 
@@ -37,7 +38,6 @@ export default function Historico() {
 
   // Mostra TUDO o que foi enviado para o histórico (sem precisar escolher datas)
   async function carregar() {
-    setCarregando(true);
     try {
       const d = await buscarTudo(() =>
         sb().from("saidas").select("*").eq("arquivado", true)
@@ -48,6 +48,7 @@ export default function Historico() {
     setCarregando(false);
   }
   useEffect(() => { carregar(); }, []);
+  useTempoReal(carregar, []);
 
   const base = useMemo(() => {
     const b = busca.trim().toUpperCase();

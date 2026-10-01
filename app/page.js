@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { sb, buscarTudo } from "../lib/supabase";
 import { interpretar, textoParaLinhas } from "../lib/roadnet";
 import { useUsuario } from "../components/Casca";
-import { guardarDataTrabalho } from "../lib/hooks";
+import { guardarDataTrabalho, useTempoReal } from "../lib/hooks";
 import { useColunas } from "../lib/colunas";
 import { desfazerFrete } from "../lib/frete";
 import {
@@ -36,8 +36,8 @@ export default function Programacao() {
 
   // A Programação mostra SÓ a última base importada do RoadNet (igual para todo mundo).
   // Não guarda histórico: cada importação substitui a anterior.
+  const loteAtual = useRef("");
   async function carregar() {
-    setCarregando(true);
     const [todas, v] = await Promise.all([
       buscarTudo(() => sb().from("programacao").select("*").order("id")),
       buscarTudo(() => sb().from("veiculos").select("*").order("transportadora").order("placa")),
@@ -52,11 +52,13 @@ export default function Programacao() {
     setRotas(r || []);
     setVeiculos(v || []);
     setSaidasDia(s.data || []);
-    setExcluidas({});
-    setIncluidasSemCarga({});
+    // só limpa as marcações "Sai?" quando chega uma base nova
+    const lote = r[0]?.created_at || "";
+    if (lote !== loteAtual.current) { setExcluidas({}); setIncluidasSemCarga({}); loteAtual.current = lote; }
     setCarregando(false);
   }
   useEffect(() => { carregar(); }, []);
+  useTempoReal(carregar, []); // atualiza sozinho quando alguém importa ou gera frete
 
   const mapaVeic = useMemo(() => Object.fromEntries(veiculos.map((v) => [v.placa, v])), [veiculos]);
 

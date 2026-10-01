@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { sb } from "../../lib/supabase";
 import { useColunas } from "../../lib/colunas";
+import { useTempoReal } from "../../lib/hooks";
 import { useFiltros, ThFiltro } from "../../components/FiltroColuna";
 import { fmtDataHora, baixarCSV } from "../../lib/util";
 
@@ -62,6 +63,7 @@ export default function Log() {
     setCarregando(false);
   }
   useEffect(() => { carregar(); }, []);
+  useTempoReal(carregar, []);
 
   // tempo real: novas alterações aparecem sozinhas
   useEffect(() => {

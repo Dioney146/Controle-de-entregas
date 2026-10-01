@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { sb, buscarTudo } from "../../lib/supabase";
 import CampoEditavel from "../../components/CampoEditavel";
 import { useColunas } from "../../lib/colunas";
+import { useTempoReal } from "../../lib/hooks";
 import { useFiltros, ThFiltro } from "../../components/FiltroColuna";
 
 // Cadastro padronizado de motoristas e entregadores.
@@ -29,7 +30,6 @@ export default function Pessoas() {
   const f = useFiltros(COLUNAS);
 
   async function carregar() {
-    setCarregando(true);
     const [p, s] = await Promise.all([
       buscarTudo(() => sb().from("pessoas").select("*").order("nome")),
       buscarTudo(() => sb().from("saidas").select("motorista,entregador")),
@@ -44,10 +44,10 @@ export default function Pessoas() {
     });
     setUsos(cont);
     setLista(p || []);
-    setMarcados(new Set());
     setCarregando(false);
   }
   useEffect(() => { carregar(); }, []);
+  useTempoReal(carregar, []);
 
   async function atualizar(id, campos) {
     const { error } = await sb().from("pessoas").update(campos).eq("id", id);
@@ -69,6 +69,7 @@ export default function Pessoas() {
     if (!marcados.size || !confirm(`Excluir ${marcados.size} nome(s) do cadastro?\n(O que já foi gravado no frete/histórico não muda.)`)) return;
     const { error } = await sb().from("pessoas").delete().in("id", [...marcados]);
     if (error) return alert(error.message);
+    setMarcados(new Set());
     carregar();
   }
 
