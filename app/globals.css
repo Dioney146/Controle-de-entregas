@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Questrial&display=swap');
 :root {
   --fundo: #f3f5f7;
   --cartao: #ffffff;
@@ -17,9 +18,10 @@
 }
 
 * { box-sizing: border-box; }
+button, input, select, textarea { font-family: inherit; }
 html, body { margin: 0; padding: 0; }
 body {
-  font-family: "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
+  font-family: "Century Gothic", CenturyGothic, "URW Gothic", "URW Gothic L", AppleGothic, "Questrial", "Segoe UI", Arial, sans-serif;
   background: var(--fundo);
   color: var(--texto);
   font-size: 14px;
@@ -259,10 +261,11 @@ tr.l-fora td { opacity: .45; }
 /* ---------- impressão (frete para a portaria) ---------- */
 /* ---------- modo compacto: linhas baixas para caber tudo na tela ---------- */
 @media screen {
-  table { font-size: 12.5px; }
+  table { font-size: 13.5px; font-weight: 700; }
+  th { font-size: .74rem; font-weight: 800; }
   th { padding: 3px 6px; }
-  td { height: 21px; padding: 0 6px; line-height: 1.2; }
-  .campo-ed { height: 19px; padding: 0 5px; line-height: 17px; font-size: 12.5px; }
+  td { height: 22px; padding: 0 6px; line-height: 1.2; }
+  .campo-ed { height: 20px; padding: 0 5px; line-height: 18px; font-size: 13.5px; font-weight: 700; font-family: inherit; }
   .campo-ed.hora { height: 19px; padding: 0 4px; }
   td .btn.mini { padding: 0 8px; height: 18px; font-size: .74rem; line-height: 16px; }
   td .btn.link { padding: 0 3px; }
