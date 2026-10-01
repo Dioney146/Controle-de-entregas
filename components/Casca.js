@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { configurado, definirUsuario } from "../lib/supabase";
 import Presenca, { corDoNome, iniciais } from "./Presenca";
+import Vigia from "./Vigia";
 
 // "Login" sem senha: a pessoa só diz quem é. Serve para mostrar quem está no site
 // e em qual célula, e para gravar quem deu checkout / enviou ao histórico.
@@ -103,6 +104,7 @@ export default function Casca({ children }) {
           <button className="btn link" onClick={sair} title="Trocar de usuário">Sair</button>
         </div>
       </header>
+      <Vigia />
       <main className="conteudo">{children}</main>
     </UsuarioCtx.Provider>
   );
