@@ -3,11 +3,13 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { sb } from "../../lib/supabase";
-import { useDataDaUrl, useNomes, useTempoReal } from "../../lib/hooks";
+import { useDataDaUrl, useTempoReal } from "../../lib/hooks";
 import CampoEditavel from "../../components/CampoEditavel";
 import { useColunas } from "../../lib/colunas";
 import { desfazerFrete } from "../../lib/frete";
 import { useFiltros, ThFiltro } from "../../components/FiltroColuna";
+import SeletorPessoa, { usePessoas } from "../../components/SeletorPessoa";
+import { useUsuario } from "../../components/Casca";
 import { fmtData, horaInput, horaParaTimestamp, num, moeda, normPlaca } from "../../lib/util";
 
 const ROTULO = { PROGRAMADO: "A sair", EM_ROTA: "Saiu", RETORNOU: "Retornou" };
@@ -25,7 +27,7 @@ const COLUNAS = {
   infor: { valor: (l) => l.destino },
   valor: { valor: (l) => l.valor, numero: true },
   saida: { valor: (l) => horaInput(l.hora_saida) },
-  status: { valor: (l) => ROTULO[l.status] },
+  status: { valor: (l) => (l.arquivado ? "No histórico" : ROTULO[l.status]) },
 };
 
 export default function Frete() {
@@ -34,7 +36,9 @@ export default function Frete() {
   const [veiculos, setVeiculos] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [novaPlaca, setNovaPlaca] = useState("");
-  const nomes = useNomes();
+  const [verPendencias, setVerPendencias] = useState(false);
+  const pessoas = usePessoas();
+  const { email } = useUsuario();
   const [refTabela, ajustarColunas] = useColunas("frete", `${carregando}-${linhas.length}`);
   const f = useFiltros(COLUNAS);
   const exibidas = f.aplicar(linhas);
@@ -86,11 +90,52 @@ export default function Frete() {
     try { await atualizar(l.id, { hora_saida: new Date().toISOString(), status: "EM_ROTA" }); } catch (e) { alert(e.message); }
   }
 
+  // ---------- histórico: só vai quando for enviado (tudo 100%) ----------
+  const pendencias = (l) => [
+    !l.motorista && "motorista",
+    !l.entregador && "entregador",
+    !l.hora_saida && "horário de saída",
+  ].filter(Boolean);
+
+  async function enviarHistorico() {
+    const alvo = exibidas.filter((l) => !l.arquivado);
+    if (!alvo.length) return;
+    const faltando = alvo.filter((l) => pendencias(l).length);
+    if (faltando.length) {
+      setVerPendencias(true);
+      alert(
+        `Ainda não está 100%: ${faltando.length} veículo(s) com informação faltando.\n\n` +
+        faltando.slice(0, 15).map((l) => `• ${l.placa}: falta ${pendencias(l).join(", ")}`).join("\n") +
+        (faltando.length > 15 ? `\n… e mais ${faltando.length - 15}` : "") +
+        `\n\nAs linhas com pendência ficaram marcadas em vermelho.`
+      );
+      return;
+    }
+    if (!confirm(`Enviar ${alvo.length} veículo(s) de ${fmtData(data)} para o HISTÓRICO?`)) return;
+    const ids = alvo.map((l) => l.id);
+    const campos = { arquivado: true, arquivado_em: new Date().toISOString(), arquivado_por: email || null };
+    const { error } = await sb().from("saidas").update(campos).in("id", ids);
+    if (error) return alert(error.message);
+    setLinhas((ls) => ls.map((l) => (ids.includes(l.id) ? { ...l, ...campos } : l)));
+    setVerPendencias(false);
+  }
+
+  async function tirarDoHistorico() {
+    const alvo = exibidas.filter((l) => l.arquivado);
+    if (!alvo.length || !confirm(`Tirar ${alvo.length} veículo(s) de ${fmtData(data)} do HISTÓRICO para corrigir?`)) return;
+    const ids = alvo.map((l) => l.id);
+    const campos = { arquivado: false, arquivado_em: null, arquivado_por: null };
+    const { error } = await sb().from("saidas").update(campos).in("id", ids);
+    if (error) return alert(error.message);
+    setLinhas((ls) => ls.map((l) => (ids.includes(l.id) ? { ...l, ...campos } : l)));
+  }
+
   async function desfazerTudo() {
     if (await desfazerFrete(data)) carregar();
   }
 
   async function desfazerSaida(l) {
+    if (l.arquivado) return alert("Esse veículo já está no histórico. Clique em \"Tirar do histórico\" antes de corrigir.");
     if (!confirm(`Desfazer a saída de ${l.placa}? Ele volta para "A sair".`)) return;
     try { await atualizar(l.id, { hora_saida: null, status: "PROGRAMADO", checkout_em: null, checkout_por: null }); } catch (e) { alert(e.message); }
   }
@@ -136,6 +181,12 @@ export default function Frete() {
             <input type="date" value={data} onChange={(e) => setData(e.target.value)} />
           </label>
           <button className="btn" onClick={desfazerTudo} disabled={!linhas.length} title="Tira do frete os veículos desta data">↩ Desfazer frete</button>
+          {exibidas.some((l) => l.arquivado) && (
+            <button className="btn" onClick={tirarDoHistorico} title="Volta para correção">↩ Tirar do histórico</button>
+          )}
+          <button className="btn verde" onClick={enviarHistorico} disabled={!exibidas.some((l) => !l.arquivado)} title="Só envia se motorista, entregador e saída estiverem preenchidos">
+            ✓ Enviar para o histórico
+          </button>
           <button className="btn primario" onClick={() => window.print()} disabled={!linhas.length}>Imprimir frete</button>
         </div>
       </div>
@@ -145,6 +196,7 @@ export default function Frete() {
         <div className="kpi laranja"><span>A sair</span><b>{aSair}</b></div>
         <div className="kpi verde"><span>Saíram</span><b>{linhas.length - aSair}</b></div>
         <div className="kpi"><span>Motorista a definir</span><b>{semMotorista}</b></div>
+        <div className="kpi verde"><span>No histórico</span><b>{linhas.filter((l) => l.arquivado).length} / {linhas.length}</b></div>
         <div className="kpi"><span>Entregas · Peso</span><b>{num(totEnt)} · {num(totKg)} kg</b></div>
       </section>
 
@@ -178,15 +230,15 @@ export default function Frete() {
               </thead>
               <tbody>
                 {exibidas.map((l) => (
-                  <tr key={l.id} className={l.status === "PROGRAMADO" ? "" : "l-verde"}>
+                  <tr key={l.id} className={`${l.status === "PROGRAMADO" ? "" : "l-verde"} ${l.arquivado ? "l-arquivado" : ""} ${verPendencias && !l.arquivado && pendencias(l).length ? "l-pendente" : ""}`}>
                     <td>{fmtData(l.data).slice(0, 5)}</td>
                     <td><CampoEditavel valor={l.zona} largura="6em" aoSalvar={(v) => atualizar(l.id, { zona: v })} /></td>
                     <td className="placa">{l.placa}</td>
                     <td>{l.transportadora}</td>
                     <td className="n"><CampoEditavel tipo="number" min={0} valor={l.entregas ?? ""} largura="4em" className="n" aoSalvar={(v) => atualizar(l.id, { entregas: v })} /></td>
                     <td className="n">{num(l.kg)}</td>
-                    <td><CampoEditavel valor={l.motorista} largura="14em" lista="lista-motoristas" placeholder="motorista…" className={l.motorista ? "" : "falta"} aoSalvar={(v) => atualizar(l.id, { motorista: v })} /></td>
-                    <td><CampoEditavel valor={l.entregador} largura="14em" lista="lista-entregadores" placeholder="entregador…" aoSalvar={(v) => atualizar(l.id, { entregador: v })} /></td>
+                    <td><SeletorPessoa lista={pessoas} funcao="MOTORISTA" valor={l.motorista} placeholder="motorista…" aoSalvar={(v) => atualizar(l.id, { motorista: v })} /></td>
+                    <td><SeletorPessoa lista={pessoas} funcao="ENTREGADOR" multiplo valor={l.entregador} placeholder="entregador…" aoSalvar={(v) => atualizar(l.id, { entregador: v })} /></td>
                     <td><CampoEditavel valor={l.destino} largura="12em" aoSalvar={(v) => atualizar(l.id, { destino: v })} /></td>
                     <td className="n">{moeda(l.valor)}</td>
                     <td className="saida"><div className="saida-box">
@@ -194,7 +246,7 @@ export default function Frete() {
                       <span className="so-imprimir">{horaInput(l.hora_saida)}</span>
                       {l.status === "PROGRAMADO" && <button className="btn mini nao-imprimir" onClick={() => saiuAgora(l)}>Saiu</button>}
                     </div></td>
-                    <td className="nao-imprimir"><span className={`status s-${l.status}`}>{ROTULO[l.status]}</span></td>
+                    <td className="nao-imprimir">{l.arquivado ? <span className="status s-ARQ" title={`Enviado ${l.arquivado_por ? "por " + l.arquivado_por : ""}`}>✓ Histórico</span> : <span className={`status s-${l.status}`}>{ROTULO[l.status]}</span>}</td>
                     <td className="nao-imprimir">
                       {l.status === "PROGRAMADO"
                         ? <button className="btn link perigo" title="Remover do frete" onClick={() => remover(l)}>✕</button>
@@ -227,8 +279,6 @@ export default function Frete() {
         </div>
       </section>
 
-      <datalist id="lista-motoristas">{nomes.motoristas.map((n) => <option key={n} value={n} />)}</datalist>
-      <datalist id="lista-entregadores">{nomes.entregadores.map((n) => <option key={n} value={n} />)}</datalist>
       <datalist id="lista-placas">{veiculos.map((v) => <option key={v.placa} value={v.placa}>{v.transportadora} · {v.tipo}</option>)}</datalist>
     </>
   );

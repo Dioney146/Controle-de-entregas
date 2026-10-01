@@ -154,6 +154,34 @@ th.filtrado .btn-filtro { background: var(--primaria); border-color: var(--prima
 .pf-acoes { display: flex; justify-content: flex-end; align-items: center; gap: 6px; margin-top: 6px; }
 .pf-acoes .btn.link { margin-right: auto; }
 
+/* ---------- seletor de motorista/entregador (lista com pesquisa) ---------- */
+.campo-ed.seletor {
+  display: flex; align-items: center; justify-content: space-between; gap: 6px; text-align: left; cursor: pointer;
+  border: 1px solid transparent; background: transparent; overflow: hidden; white-space: nowrap;
+}
+.campo-ed.seletor:hover { border-color: var(--borda); background: #fff; }
+.campo-ed.seletor span { overflow: hidden; text-overflow: ellipsis; }
+.campo-ed.seletor i { font-style: normal; font-size: 10px; color: var(--suave); }
+.campo-ed.seletor .seletor-ph { color: #b0596b; }
+.painel-pessoa .pp-opcao { display: flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 4px; cursor: pointer; white-space: nowrap; }
+.painel-pessoa .pp-opcao span { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+.painel-pessoa .pp-opcao small { color: var(--suave); }
+.painel-pessoa .pp-opcao.ativo { background: #eef3fa; }
+.painel-pessoa .pp-opcao.sel { font-weight: 700; color: var(--primaria-esc); }
+.painel-pessoa .pp-vazio { padding: 8px; color: var(--suave); }
+.painel-pessoa .pp-novo { color: var(--verde); font-weight: 600; margin-top: 4px; }
+.painel-pessoa .pf-lista { max-height: 220px; }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
+.chip { background: #e3effb; color: var(--primaria-esc); border-radius: 12px; padding: 2px 8px; font-size: 12px; font-weight: 600; cursor: pointer; }
+.chip:hover { background: var(--vermelho-fundo); color: var(--vermelho); }
+
+/* ---------- envio para o histórico ---------- */
+.btn.verde { background: var(--verde); border-color: var(--verde); color: #fff; }
+.btn.verde:hover:not(:disabled) { background: #17733f; }
+.s-ARQ { background: #2b3a4d; color: #fff; }
+tr.l-arquivado td { background: #e9eef3; color: #44505e; }
+tr.l-pendente td { background: var(--vermelho-fundo) !important; }
+
 /* ---------- alertas / etiquetas ---------- */
 .alerta { padding: 10px 14px; border-radius: 8px; margin-bottom: 12px; border: 1px solid; cursor: default; }
 .alerta.ok { background: var(--verde-fundo); border-color: #a9dcbc; }
