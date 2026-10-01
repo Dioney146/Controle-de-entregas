@@ -17,8 +17,8 @@ export const iniciais = (nome) =>
   String(nome || "?").trim().split(/\s+/).slice(0, 2).map((p) => p[0]).join("").toUpperCase();
 
 const NOME_PAGINA = {
-  "/": "Programação", "/frete": "Frete / Saídas", "/retorno": "Retorno",
-  "/historico": "Histórico", "/veiculos": "Veículos", "/pessoas": "Motoristas / Entregadores",
+  "/": "Programação", "/frete": "Frete", "/retorno": "Retorno",
+  "/historico": "Histórico", "/veiculos": "Veículos", "/pessoas": "Motoristas", "/log": "Log",
 };
 
 function idCliente() {
@@ -29,13 +29,17 @@ function idCliente() {
   } catch { return Math.random().toString(36).slice(2, 10); }
 }
 
-// descobre a célula (tabela / linha / coluna) a partir de um elemento clicado
+// descobre a célula (tabela / linha / coluna) a partir de um elemento
 function celulaDe(el) {
   const td = el?.closest?.("td");
   const tr = td?.closest("tr[data-id]");
   const tabela = td?.closest("table[data-tabela]");
   if (!td || !tr || !tabela) return null;
-  return { t: tabela.dataset.tabela, r: tr.dataset.id, c: td.cellIndex };
+  // descrição legível: placa (ou 1º texto da linha) + nome da coluna
+  const th = tabela.querySelector("thead tr")?.cells?.[td.cellIndex];
+  const coluna = (th?.querySelector(".th-rotulo")?.textContent || th?.textContent || "").trim();
+  const ref = (tr.querySelector("td.placa")?.textContent || tr.dataset.ref || "").trim();
+  return { t: tabela.dataset.tabela, r: tr.dataset.id, c: td.cellIndex, d: [ref, coluna].filter(Boolean).join(" · ") };
 }
 
 function acharCelula(cel) {
@@ -47,7 +51,7 @@ function acharCelula(cel) {
 export default function Presenca({ nome, pagina }) {
   const [outros, setOutros] = useState([]); // [{ key, nome, cor, pagina, celula }]
   const canal = useRef(null);
-  const meu = useRef({ nome, cor: corDoNome(nome), pagina, celula: null });
+  const meu = useRef({ nome, cor: corDoNome(nome), pagina, celula: null, visivel: true });
   const chave = useRef(null);
 
   // envia meu estado (com um pequeno atraso para não sobrecarregar)
@@ -84,9 +88,9 @@ export default function Presenca({ nome, pagina }) {
     publicar();
   }, [pagina]);
 
-  // célula selecionada (clique ou foco)
+  // célula onde a pessoa está: onde o mouse passa, clica ou digita (em tempo real)
   useEffect(() => {
-    const aoSelecionar = (e) => {
+    const aoMover = (e) => {
       const c = celulaDe(e.target);
       if (!c) return;
       const a = meu.current.celula;
@@ -94,11 +98,17 @@ export default function Presenca({ nome, pagina }) {
       meu.current = { ...meu.current, celula: c };
       publicar();
     };
-    document.addEventListener("mousedown", aoSelecionar, true);
-    document.addEventListener("focusin", aoSelecionar, true);
+    // aba em segundo plano: continua aparecendo para os outros, marcada como "em segundo plano"
+    const aoTrocarAba = () => { meu.current = { ...meu.current, visivel: !document.hidden }; publicar(); };
+    document.addEventListener("mouseover", aoMover, true);
+    document.addEventListener("mousedown", aoMover, true);
+    document.addEventListener("focusin", aoMover, true);
+    document.addEventListener("visibilitychange", aoTrocarAba);
     return () => {
-      document.removeEventListener("mousedown", aoSelecionar, true);
-      document.removeEventListener("focusin", aoSelecionar, true);
+      document.removeEventListener("mouseover", aoMover, true);
+      document.removeEventListener("mousedown", aoMover, true);
+      document.removeEventListener("focusin", aoMover, true);
+      document.removeEventListener("visibilitychange", aoTrocarAba);
     };
   }, []);
 
@@ -107,17 +117,22 @@ export default function Presenca({ nome, pagina }) {
   return (
     <>
       <div className="presenca" title="Quem está no site agora">
-        {outros.length === 0 && <span className="presenca-so">só você</span>}
-        {outros.map((p) => (
-          <span
-            key={p.key}
-            className={`avatar ${p.pagina === pagina ? "" : "outra-pagina"}`}
-            style={{ background: p.cor }}
-            title={`${p.nome} — ${NOME_PAGINA[p.pagina] || p.pagina}`}
-          >
-            {iniciais(p.nome)}
-          </span>
-        ))}
+        {outros.length === 0 && <span className="presenca-so">só você online</span>}
+        {outros.map((p) => {
+          const onde = [NOME_PAGINA[p.pagina] || p.pagina, p.celula?.d].filter(Boolean).join(" › ");
+          return (
+            <span
+              key={p.key}
+              className={`pessoa-online ${p.visivel === false ? "fundo" : ""}`}
+              style={{ borderColor: p.cor }}
+              title={`${p.nome} — ${onde}${p.visivel === false ? " (em segundo plano)" : ""}`}
+            >
+              <span className="avatar" style={{ background: p.cor }}>{iniciais(p.nome)}</span>
+              <b>{p.nome.split(" ")[0]}</b>
+              <small>{onde}{p.visivel === false ? " · 💤" : ""}</small>
+            </span>
+          );
+        })}
       </div>
       {typeof document !== "undefined" && createPortal(<Marcadores pessoas={naMesmaPagina} />, document.body)}
     </>

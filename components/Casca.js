@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { configurado } from "../lib/supabase";
+import { configurado, definirUsuario } from "../lib/supabase";
 import Presenca, { corDoNome, iniciais } from "./Presenca";
 
 // "Login" sem senha: a pessoa só diz quem é. Serve para mostrar quem está no site
@@ -18,6 +18,7 @@ const MENU = [
   { href: "/historico", rotulo: "Histórico" },
   { href: "/veiculos", rotulo: "Veículos" },
   { href: "/pessoas", rotulo: "Motoristas / Entregadores" },
+  { href: "/log", rotulo: "Log" },
 ];
 
 const ler = (k, padrao) => { try { return JSON.parse(localStorage.getItem(k)) ?? padrao; } catch { return padrao; } };
@@ -78,6 +79,7 @@ export default function Casca({ children }) {
   }
 
   if (nome === undefined) return <div className="carregando-tela">Carregando…</div>;
+  if (nome) definirUsuario(nome); // o banco registra este nome no log de alterações
   if (!nome) return <Entrar aoEntrar={(n) => { gravar("usuarioSite", n); setNome(n); }} />;
 
   function sair() {
