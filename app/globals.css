@@ -377,3 +377,7 @@ tr.l-fora td { opacity: .45; }
 .excluidas { border-top: 1px solid var(--borda); padding: 8px 10px 10px; }
 .excluidas table { width: auto; }
 .excluidas td, .excluidas th { padding: 3px 10px; }
+
+/* link para o site de Transferências */
+.topo nav a.link-externo { border: 1px solid rgba(255,255,255,.22); border-radius: 6px; margin-left: 6px; }
+.topo nav a.link-externo:hover { background: rgba(255,255,255,.12); }
