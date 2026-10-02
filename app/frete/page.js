@@ -9,8 +9,9 @@ import { useColunas } from "../../lib/colunas";
 import { desfazerFrete } from "../../lib/frete";
 import { useFiltros, ThFiltro } from "../../components/FiltroColuna";
 import SeletorPessoa, { usePessoas } from "../../components/SeletorPessoa";
+import MotivoExclusao from "../../components/MotivoExclusao";
 import { useUsuario } from "../../components/Casca";
-import { fmtData, horaInput, horaParaTimestamp, num, moeda, normPlaca, corTrans } from "../../lib/util";
+import { fmtData, fmtDataHora, horaInput, horaParaTimestamp, num, moeda, normPlaca, corTrans } from "../../lib/util";
 
 const ROTULO = { PROGRAMADO: "A sair", EM_ROTA: "Saiu", RETORNOU: "Retornou" };
 
@@ -37,6 +38,9 @@ export default function Frete() {
   const [carregando, setCarregando] = useState(true);
   const [novaPlaca, setNovaPlaca] = useState("");
   const [verPendencias, setVerPendencias] = useState(false);
+  const [excluindo, setExcluindo] = useState(null);     // linha aguardando o motivo
+  const [excluidas, setExcluidas] = useState([]);       // removidas nesta data (com motivo)
+  const [verExcluidas, setVerExcluidas] = useState(false);
   const pessoas = usePessoas();
   const { email } = useUsuario();
   const [refTabela, ajustarColunas] = useColunas("frete", `${carregando}-${linhas.length}`);
@@ -45,8 +49,12 @@ export default function Frete() {
 
   async function carregar() {
     if (!data) return;
-    const { data: s } = await sb().from("saidas").select("*").eq("data", data).order("ordem").order("id");
+    const [{ data: s }, ex] = await Promise.all([
+      sb().from("saidas").select("*").eq("data", data).order("ordem").order("id"),
+      sb().from("saidas_excluidas").select("id,placa,motivo,usuario,quando,dados").eq("data", data).order("quando", { ascending: false }),
+    ]);
     setLinhas(s || []);
+    setExcluidas(ex.error ? [] : ex.data || []);
     setCarregando(false);
   }
   useEffect(() => { setCarregando(true); carregar(); }, [data]);
@@ -154,11 +162,23 @@ export default function Frete() {
     try { await atualizar(l.id, { hora_saida: null, status: "PROGRAMADO", checkout_em: null, checkout_por: null }); } catch (e) { alert(e.message); }
   }
 
-  async function remover(l) {
-    if (!confirm(`Remover ${l.placa} do frete?`)) return;
-    const { error } = await sb().from("saidas").delete().eq("id", l.id);
-    if (error) return alert(error.message);
+  // excluir do frete: só com motivo (fica guardado e aparece no Log)
+  function remover(l) {
+    if (l.arquivado) return alert("Esse veículo já está no histórico. Clique em \"Tirar do histórico\" antes de excluir.");
+    setExcluindo(l);
+  }
+  async function confirmarExclusao(motivo) {
+    const l = excluindo;
+    const { error } = await sb().rpc("excluir_do_frete", { p_id: l.id, p_motivo: motivo });
+    if (error) {
+      const semFuncao = /excluir_do_frete|function|schema cache/i.test(error.message || "");
+      return alert(semFuncao
+        ? "A exclusão com motivo ainda não está ativada. Rode o arquivo 09_exclusao_justificada.sql no Supabase."
+        : error.message);
+    }
     setLinhas((ls) => ls.filter((x) => x.id !== l.id));
+    setExcluindo(null);
+    carregar();
   }
 
   async function adicionar() {
@@ -287,11 +307,37 @@ export default function Frete() {
             <button className="btn link" title="Volta as colunas para o auto ajuste" onClick={ajustarColunas}>↔ ajustar colunas</button>
           </div>
           <div className="linha-acoes">
+            {excluidas.length > 0 && (
+              <button className="btn link" onClick={() => setVerExcluidas((v) => !v)}>
+                🗑 {excluidas.length} excluído(s) {verExcluidas ? "▲" : "▼"}
+              </button>
+            )}
             {f.ativos > 0 && <button className="btn link" onClick={f.limparTudo}>✕ limpar filtros ({exibidas.length} de {linhas.length})</button>}
             {linhas.length > 0 && <Link className="btn" href={`/retorno?data=${data}`}>Ir para o Retorno →</Link>}
           </div>
         </div>
+        {verExcluidas && excluidas.length > 0 && (
+          <div className="excluidas nao-imprimir">
+            <table>
+              <thead><tr><th>Placa</th><th>Trans</th><th>Infor</th><th>Motivo</th><th>Excluído por</th><th>Quando</th></tr></thead>
+              <tbody>
+                {excluidas.map((x) => (
+                  <tr key={x.id}>
+                    <td className="placa">{x.placa}</td>
+                    <td>{x.dados?.transportadora}</td>
+                    <td>{x.dados?.destino}</td>
+                    <td><b>{x.motivo}</b></td>
+                    <td>{x.usuario}</td>
+                    <td>{fmtDataHora(x.quando)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
+
+      {excluindo && <MotivoExclusao linha={excluindo} aoConfirmar={confirmarExclusao} aoCancelar={() => setExcluindo(null)} />}
 
       <datalist id="lista-placas">{veiculos.map((v) => <option key={v.placa} value={v.placa}>{v.transportadora} · {v.tipo}</option>)}</datalist>
       <datalist id="lista-trans">

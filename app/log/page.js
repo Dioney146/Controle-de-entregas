@@ -16,7 +16,7 @@ const CAMPO = {
   checkout_em: "Checkout", checkout_por: "Checkout por", arquivado: "Enviado ao histórico", zona: "Zona",
   entregas: "Entregas", destino: "Infor", obs: "Obs", kg: "KG", valor: "Valor", transportadora: "Transportadora",
   tipo: "Tipo", nome: "Nome", funcao: "Função", ativo: "Ativo", ordem: "Ordem", data: "Data", placa: "Placa",
-  registros: "Registros",
+  registros: "Registros", motivo: "Motivo da exclusão",
 };
 const STATUS = { PROGRAMADO: "A sair", EM_ROTA: "Saiu", RETORNOU: "Retornou" };
 const ESCONDER = new Set(["arquivado_em", "arquivado_por", "ordem"]); // detalhes repetidos
