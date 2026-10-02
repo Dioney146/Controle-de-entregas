@@ -142,6 +142,35 @@ export default function Frete() {
     setVerPendencias(false);
   }
 
+  // ---------- Retorno: o frete só aparece lá quando for liberado ----------
+  const liberados = linhas.filter((l) => l.liberado_retorno).length;
+  const temColunaLiberado = linhas.length === 0 || "liberado_retorno" in linhas[0];
+
+  async function liberarRetorno() {
+    if (!temColunaLiberado) return alert("Rode o arquivo 10_liberar_retorno.sql no Supabase para ativar a liberação.");
+    const alvo = linhas.filter((l) => !l.liberado_retorno);
+    if (!alvo.length) return;
+    if (!confirm(`Liberar o frete de ${fmtData(data)} (${alvo.length} veículo(s)) para o RETORNO?\nO monitoramento passa a ver esses veículos para dar checkout.`)) return;
+    const ids = alvo.map((l) => l.id);
+    const campos = { liberado_retorno: true, liberado_retorno_em: new Date().toISOString(), liberado_retorno_por: email || null };
+    const { error } = await sb().from("saidas").update(campos).in("id", ids);
+    if (error) return alert(error.message);
+    setLinhas((ls) => ls.map((l) => (ids.includes(l.id) ? { ...l, ...campos } : l)));
+  }
+
+  async function tirarDoRetorno() {
+    const alvo = linhas.filter((l) => l.liberado_retorno);
+    if (!alvo.length) return;
+    const comCheckout = alvo.filter((l) => l.status === "RETORNOU").length;
+    if (comCheckout && !confirm(`Atenção: ${comCheckout} veículo(s) desta data já tiveram checkout no Retorno. Tirar mesmo assim? (os checkouts não são apagados)`)) return;
+    if (!comCheckout && !confirm(`Tirar o frete de ${fmtData(data)} do RETORNO? Ele só volta a aparecer lá quando for liberado de novo.`)) return;
+    const ids = alvo.map((l) => l.id);
+    const campos = { liberado_retorno: false, liberado_retorno_em: null, liberado_retorno_por: null };
+    const { error } = await sb().from("saidas").update(campos).in("id", ids);
+    if (error) return alert(error.message);
+    setLinhas((ls) => ls.map((l) => (ids.includes(l.id) ? { ...l, ...campos } : l)));
+  }
+
   async function tirarDoHistorico() {
     const alvo = exibidas.filter((l) => l.arquivado);
     if (!alvo.length || !confirm(`Tirar ${alvo.length} veículo(s) de ${fmtData(data)} do HISTÓRICO para corrigir?`)) return;
@@ -188,6 +217,7 @@ export default function Frete() {
     const { data: nova, error } = await sb().from("saidas").insert({
       data, placa, transportadora: v.transportadora || "", tipo: v.tipo || "",
       motorista: "", entregador: "", status: "PROGRAMADO",
+      ...(linhas.some((l) => l.liberado_retorno) ? { liberado_retorno: true, liberado_retorno_em: new Date().toISOString(), liberado_retorno_por: email || null } : {}),
       ordem: linhas.length ? Math.max(...linhas.map((l) => l.ordem || 0)) + 1 : 0,
     }).select().single();
     if (error) return alert(error.message);
@@ -218,6 +248,13 @@ export default function Frete() {
           {exibidas.some((l) => l.arquivado) && (
             <button className="btn" onClick={tirarDoHistorico} title="Volta para correção">↩ Tirar do histórico</button>
           )}
+          {liberados < linhas.length ? (
+            <button className="btn laranja" onClick={liberarRetorno} disabled={!linhas.length} title="Só depois disso o frete aparece no Retorno (monitoramento)">
+              ➜ Liberar para o Retorno{liberados > 0 ? ` (${linhas.length - liberados} faltando)` : ""}
+            </button>
+          ) : (
+            <button className="btn" onClick={tirarDoRetorno} title="Esconde este frete do Retorno">↩ Tirar do Retorno</button>
+          )}
           <button className="btn verde" onClick={enviarHistorico} disabled={!exibidas.some((l) => !l.arquivado)} title="Só envia se motorista, entregador e saída estiverem preenchidos">
             ✓ Enviar para o histórico
           </button>
@@ -230,6 +267,7 @@ export default function Frete() {
         <div className="kpi laranja"><span>A sair</span><b>{aSair}</b></div>
         <div className="kpi verde"><span>Saíram</span><b>{linhas.length - aSair}</b></div>
         <div className="kpi"><span>Motorista a definir</span><b>{semMotorista}</b></div>
+        <div className={`kpi ${liberados === linhas.length && linhas.length ? "verde" : "laranja"}`} title="Liberados para o Retorno (monitoramento)"><span>No Retorno</span><b>{liberados} / {linhas.length}</b></div>
         <div className="kpi verde"><span>No histórico</span><b>{linhas.filter((l) => l.arquivado).length} / {linhas.length}</b></div>
         <div className="kpi"><span>Entregas · Peso</span><b>{num(totEnt)} · {num(totKg)} kg</b></div>
       </section>

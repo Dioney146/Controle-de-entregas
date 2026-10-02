@@ -381,3 +381,5 @@ tr.l-fora td { opacity: .45; }
 /* link para o site de Transferências */
 .topo nav a.link-externo { border: 1px solid rgba(255,255,255,.22); border-radius: 6px; margin-left: 6px; }
 .topo nav a.link-externo:hover { background: rgba(255,255,255,.12); }
+.btn.laranja { background: var(--laranja); border-color: var(--laranja); color: #fff; }
+.btn.laranja:hover:not(:disabled) { background: #b85f08; }

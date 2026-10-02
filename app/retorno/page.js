@@ -33,6 +33,9 @@ export default function Retorno() {
   const [linhas, setLinhas] = useState([]);
   const [aSair, setASair] = useState(0);
   const [antigasEmRota, setAntigasEmRota] = useState(0);
+  const [aguardando, setAguardando] = useState(0);   // veículos desta data ainda NÃO liberados pelo Frete
+  const [ultimaLiberada, setUltimaLiberada] = useState(null);
+  const [semColuna, setSemColuna] = useState(false);
   const [filtro, setFiltro] = useState("todos"); // todos | pendentes | retornados
   const [carregando, setCarregando] = useState(true);
   const f = useFiltros(COLUNAS);
@@ -40,17 +43,29 @@ export default function Retorno() {
 
   async function carregar() {
     if (!data) return;
-    let q = sb().from("saidas").select("*");
-    // espelho do Frete/Saídas: aparece assim que o frete é gerado (não precisa ter saída registrada)
-    q = modo === "emrota" ? q.neq("status", "RETORNOU") : q.eq("data", data);
-    const [r, p, a] = await Promise.all([
-      q.order("data").order("ordem").order("id"),
-      sb().from("saidas").select("id", { count: "exact", head: true }).eq("data", data).eq("status", "PROGRAMADO"),
-      sb().from("saidas").select("id", { count: "exact", head: true }).lt("data", data).neq("status", "RETORNOU"),
+    // só aparece aqui o frete que foi LIBERADO para o Retorno (botão no Frete / Saídas)
+    const montar = (comLiberacao) => {
+      let q = sb().from("saidas").select("*");
+      q = modo === "emrota" ? q.neq("status", "RETORNOU") : q.eq("data", data);
+      if (comLiberacao) q = q.eq("liberado_retorno", true);
+      return q.order("data").order("ordem").order("id");
+    };
+    let r = await montar(true);
+    const faltaColuna = Boolean(r.error && /liberado_retorno/i.test(r.error.message || ""));
+    if (faltaColuna) r = await montar(false);
+    const lib = (q) => (faltaColuna ? q : q.eq("liberado_retorno", true));
+    const [p, a, g, u] = await Promise.all([
+      lib(sb().from("saidas").select("id", { count: "exact", head: true }).eq("data", data).eq("status", "PROGRAMADO")),
+      lib(sb().from("saidas").select("id", { count: "exact", head: true }).lt("data", data).neq("status", "RETORNOU")),
+      faltaColuna ? { count: 0 } : sb().from("saidas").select("id", { count: "exact", head: true }).eq("data", data).eq("liberado_retorno", false),
+      faltaColuna ? { data: [] } : sb().from("saidas").select("data").eq("liberado_retorno", true).neq("status", "RETORNOU").order("data", { ascending: false }).limit(1),
     ]);
+    setSemColuna(faltaColuna);
     setLinhas(r.data || []);
     setASair(p.count || 0);
     setAntigasEmRota(a.count || 0);
+    setAguardando(g.count || 0);
+    setUltimaLiberada(u.data?.[0]?.data || null);
     setCarregando(false);
   }
   useEffect(() => { setCarregando(true); carregar(); }, [data, modo]);
@@ -103,6 +118,18 @@ export default function Retorno() {
         </div>
       </div>
 
+      {semColuna && (
+        <div className="alerta erro">Rode o arquivo <b>10_liberar_retorno.sql</b> no Supabase para ativar a liberação do frete para o Retorno.</div>
+      )}
+      {modo === "data" && aguardando > 0 && (
+        <div className="alerta aviso">
+          O frete de <b>{fmtData(data)}</b> ({aguardando} veículo(s)) ainda <b>não foi liberado</b> para o Retorno.
+          Ele aparece aqui quando alguém clicar em <b>“➜ Liberar para o Retorno”</b> em Frete / Saídas.
+          {ultimaLiberada && ultimaLiberada !== data && (
+            <> {" "}<button className="btn link" onClick={() => setData(ultimaLiberada)}>Ir para {fmtData(ultimaLiberada)}</button></>
+          )}
+        </div>
+      )}
       {modo === "data" && antigasEmRota > 0 && (
         <div className="alerta aviso">
           Há <b>{antigasEmRota}</b> veículo(s) de datas anteriores ainda sem checkout.{" "}
