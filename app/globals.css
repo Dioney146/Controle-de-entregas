@@ -388,3 +388,14 @@ tr.l-fora td { opacity: .45; }
 table.retorno tbody tr.l-ret-pend td:not(.ct):not(.c-data) { background: #fff0e0; }
 table.retorno tbody tr.l-ret-ok td:not(.ct):not(.c-data) { background: #bfe8cb; }
 @media print { table.retorno tbody tr td { background: none !important; } }
+
+/* ---------- fontes mais negritas ---------- */
+/* Century Gothic só tem até "Bold"; o contorno fino (text-stroke) deixa o traço mais grosso */
+body { font-weight: 700; }
+.topo nav a, .btn, .btn.link, .alternar button, .kpi span, .campo-data, label { font-weight: 700; }
+table, table th, table td, .campo-ed, .campo-ed.seletor, input, select, textarea, .kpi b {
+  font-weight: 800; -webkit-text-stroke: 0.3px currentColor;
+}
+table tbody td.ct { font-weight: 800; }
+input::placeholder, .campo-ed::placeholder { -webkit-text-stroke: 0; }
+@media print { table, table th, table td { -webkit-text-stroke: 0.2px currentColor; } }
