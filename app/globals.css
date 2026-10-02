@@ -383,3 +383,8 @@ tr.l-fora td { opacity: .45; }
 .topo nav a.link-externo:hover { background: rgba(255,255,255,.12); }
 .btn.laranja { background: var(--laranja); border-color: var(--laranja); color: #fff; }
 .btn.laranja:hover:not(:disabled) { background: #b85f08; }
+
+/* Retorno: laranja claro = ainda sem checkout · verde bem claro = checkout feito */
+table.retorno tbody tr.l-ret-pend td:not(.ct):not(.c-data) { background: #fff0e0; }
+table.retorno tbody tr.l-ret-ok td:not(.ct):not(.c-data) { background: #f1fbf4; }
+@media print { table.retorno tbody tr td { background: none !important; } }
