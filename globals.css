@@ -1,4 +1,6 @@
-@import url('https://fonts.googleapis.com/css2?family=Questrial&display=swap');
+/* Fonte reserva com negrito de verdade (a Questrial só tinha peso normal e o navegador
+   "inventava" o negrito, deixando as letras embaçadas) */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap');
 :root {
   --fundo: #f3f5f7;
   --cartao: #ffffff;
@@ -20,8 +22,9 @@
 * { box-sizing: border-box; }
 button, input, select, textarea { font-family: inherit; }
 html, body { margin: 0; padding: 0; }
+body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility; }
 body {
-  font-family: "Century Gothic", CenturyGothic, "URW Gothic", "URW Gothic L", AppleGothic, "Questrial", "Segoe UI", Arial, sans-serif;
+  font-family: "Century Gothic", CenturyGothic, "URW Gothic", "URW Gothic L", AppleGothic, "Poppins", "Segoe UI", Arial, sans-serif;
   background: var(--fundo);
   color: var(--texto);
   font-size: 14px;
