@@ -21,7 +21,7 @@ button, input, select, textarea { font-family: inherit; }
 html, body { margin: 0; padding: 0; }
 body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility; }
 body {
-  font-family: "Poppins", "Segoe UI", Arial, sans-serif;
+  font-family: var(--fonte), "Poppins", "Segoe UI", Arial, sans-serif;
   font-synthesis: none; /* nunca "inventar" negrito: é isso que deixa a letra embaçada */
   background: var(--fundo);
   color: var(--texto);
