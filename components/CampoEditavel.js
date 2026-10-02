@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 
 // Campo que salva sozinho quando perde o foco (ou Enter). Se aoSalvar devolver false, volta ao valor anterior.
-export default function CampoEditavel({ valor, aoSalvar, tipo = "text", lista, className = "", placeholder = "", min, largura }) {
+export default function CampoEditavel({ valor, aoSalvar, tipo = "text", lista, className = "", placeholder = "", min, largura, autoFocus = false }) {
   const [v, setV] = useState(valor ?? "");
   const [estado, setEstado] = useState(""); // "", "salvando", "ok", "erro"
 
@@ -34,6 +34,7 @@ export default function CampoEditavel({ valor, aoSalvar, tipo = "text", lista, c
       min={min}
       list={lista}
       placeholder={placeholder}
+      autoFocus={autoFocus}
       onChange={(e) => setV(e.target.value)}
       onBlur={salvar}
       onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
