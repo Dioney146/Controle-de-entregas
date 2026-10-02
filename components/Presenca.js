@@ -257,7 +257,7 @@ export default function Presenca({ nome, pagina }) {
             >
               <span className="ponto" style={{ background: p.cor }} />
               <b>{p.nome.split(" ")[0]}</b>
-              <small>{onde}{p.visivel === false ? " · 💤" : ""}</small>
+              {p.visivel === false && <small>💤</small>}
             </span>
           );
         })}
