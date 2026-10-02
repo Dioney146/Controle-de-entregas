@@ -359,3 +359,32 @@ tr.l-fora td { opacity: .45; }
   .so-imprimir { display: inline !important; }
   .titulo-impressao.so-imprimir { display: flex !important; }
 }
+
+/* ---------- janela de motivo da exclusão ---------- */
+.modal-fundo { position: fixed; inset: 0; background: rgba(15,25,40,.45); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 16px; }
+.modal { background: #fff; border-radius: 10px; padding: 18px 20px; width: 420px; max-width: 100%; box-shadow: 0 12px 40px rgba(0,0,0,.25); }
+.modal h3 { margin: 0; font-size: 1.05rem; }
+.modal-sub { margin: 2px 0 12px; color: var(--suave); font-size: .8rem; }
+.modal-pergunta { margin: 0 0 8px; font-weight: 700; }
+.motivos { display: flex; flex-direction: column; gap: 6px; }
+.motivo { display: flex; align-items: center; gap: 8px; border: 1px solid var(--borda); border-radius: 7px; padding: 7px 10px; cursor: pointer; font-weight: 600; }
+.motivo:hover { background: #f6f8fa; }
+.motivo.sel { border-color: var(--vermelho); background: var(--vermelho-fundo); }
+.motivo-outro { flex: 1; min-width: 0; padding: 4px 8px !important; }
+.modal-acoes { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+.btn.perigo-cheio { background: var(--vermelho); border-color: var(--vermelho); color: #fff; }
+.btn.perigo-cheio:disabled { opacity: .45; cursor: not-allowed; }
+.excluidas { border-top: 1px solid var(--borda); padding: 8px 10px 10px; }
+.excluidas table { width: auto; }
+.excluidas td, .excluidas th { padding: 3px 10px; }
+
+/* link para o site de Transferências */
+.topo nav a.link-externo { border: 1px solid rgba(255,255,255,.22); border-radius: 6px; margin-left: 6px; }
+.topo nav a.link-externo:hover { background: rgba(255,255,255,.12); }
+.btn.laranja { background: var(--laranja); border-color: var(--laranja); color: #fff; }
+.btn.laranja:hover:not(:disabled) { background: #b85f08; }
+
+/* Retorno: laranja claro = ainda sem checkout · verde = checkout feito */
+table.retorno tbody tr.l-ret-pend td:not(.ct):not(.c-data) { background: #fff0e0; }
+table.retorno tbody tr.l-ret-ok td:not(.ct):not(.c-data) { background: #bfe8cb; }
+@media print { table.retorno tbody tr td { background: none !important; } }
