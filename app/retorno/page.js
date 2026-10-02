@@ -192,9 +192,9 @@ export default function Retorno() {
                       <td>{l.entregador}</td>
                       <td>{l.destino}</td>
                       <td>{l.hora_saida ? fmtHora(l.hora_saida) : <span className="t-laranja">a sair</span>}</td>
-                      <td className="n"><CampoEditavel tipo="number" min={0} largura="4em" className="n" valor={l.cancelados || ""} aoSalvar={(v) => atualizar(l.id, { cancelados: v })} /></td>
-                      <td className="n"><CampoEditavel tipo="number" min={0} largura="4em" className="n" valor={l.reentregas || ""} aoSalvar={(v) => atualizar(l.id, { reentregas: v })} /></td>
-                      <td className="n"><CampoEditavel tipo="number" min={0} largura="4em" className="n" valor={l.pendentes || ""} aoSalvar={(v) => atualizar(l.id, { pendentes: v })} /></td>
+                      <td className="n"><CampoEditavel tipo="number" min={0} largura="4em" className="n" valor={l.cancelados ?? 0} aoSalvar={(v) => atualizar(l.id, { cancelados: v })} /></td>
+                      <td className="n"><CampoEditavel tipo="number" min={0} largura="4em" className="n" valor={l.reentregas ?? 0} aoSalvar={(v) => atualizar(l.id, { reentregas: v })} /></td>
+                      <td className="n"><CampoEditavel tipo="number" min={0} largura="4em" className="n" valor={l.pendentes ?? 0} aoSalvar={(v) => atualizar(l.id, { pendentes: v })} /></td>
                       <td className="c">
                         <input type="checkbox" checked={!!l.celular_devolvido} onChange={(e) => atualizar(l.id, { celular_devolvido: e.target.checked }).catch((er) => alert(er.message))} />
                       </td>
