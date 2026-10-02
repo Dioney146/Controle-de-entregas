@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-// Campo que salva sozinho quando perde o foco (ou Enter)
+// Campo que salva sozinho quando perde o foco (ou Enter). Se aoSalvar devolver false, volta ao valor anterior.
 export default function CampoEditavel({ valor, aoSalvar, tipo = "text", lista, className = "", placeholder = "", min, largura }) {
   const [v, setV] = useState(valor ?? "");
   const [estado, setEstado] = useState(""); // "", "salvando", "ok", "erro"
@@ -14,7 +14,8 @@ export default function CampoEditavel({ valor, aoSalvar, tipo = "text", lista, c
     if (String(v) === String(original)) return;
     setEstado("salvando");
     try {
-      await aoSalvar(tipo === "number" ? (v === "" ? 0 : Number(v)) : typeof v === "string" ? v.toUpperCase().trim() : v);
+      const r = await aoSalvar(tipo === "number" ? (v === "" ? 0 : Number(v)) : typeof v === "string" ? v.toUpperCase().trim() : v);
+      if (r === false) { setV(original); setEstado(""); return; } // cancelado: volta ao valor anterior
       setEstado("ok");
       setTimeout(() => setEstado(""), 900);
     } catch (e) {
