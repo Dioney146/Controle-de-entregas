@@ -23,7 +23,7 @@ const MENU = [
 ];
 
 // Site de Transferências (separado, na Vercel). Pode trocar pela variável URL_TRANSFERENCIAS na Vercel.
-const URL_TRANSFERENCIAS = process.env.NEXT_PUBLIC_URL_TRANSFERENCIAS || "https://transferencias-dellys.vercel.app";
+const URL_TRANSFERENCIAS = process.env.NEXT_PUBLIC_URL_TRANSFERENCIAS || "https://reentregas-dellys.vercel.app";
 
 const ler = (k, padrao) => { try { return JSON.parse(localStorage.getItem(k)) ?? padrao; } catch { return padrao; } };
 const gravar = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
