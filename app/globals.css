@@ -389,3 +389,14 @@ tr.l-fora td { opacity: .45; }
 table.retorno tbody tr.l-ret-pend td:not(.ct):not(.c-data) { background: #fff0e0; }
 table.retorno tbody tr.l-ret-ok td:not(.ct):not(.c-data) { background: #bfe8cb; }
 @media print { table.retorno tbody tr td { background: none !important; } }
+
+/* Retorno: observação no lugar de Cancel. / Reentr. / Pend. */
+td.obs-celula { padding: 0 4px !important; }
+.obs-linha { display: flex; align-items: center; gap: 4px; }
+.obs-linha .campo-ed { flex: 1; color: #8a3b00; font-style: italic; }
+.obs-icone { font-size: 12px; }
+.pend-linha { display: flex; align-items: center; gap: 2px; }
+.pend-linha .campo-ed { flex: 1; }
+.btn-obs { border: 0; background: none; cursor: pointer; padding: 0 2px; font-size: 12px; opacity: .25; line-height: 1; }
+tr:hover .btn-obs { opacity: .9; }
+.btn-obs:hover { transform: scale(1.2); }

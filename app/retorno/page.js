@@ -36,6 +36,7 @@ export default function Retorno() {
   const [aguardando, setAguardando] = useState(0);   // veículos desta data ainda NÃO liberados pelo Frete
   const [ultimaLiberada, setUltimaLiberada] = useState(null);
   const [semColuna, setSemColuna] = useState(false);
+  const [obsAbertas, setObsAbertas] = useState(() => new Set()); // linhas com a observação aberta para digitar
   const [filtro, setFiltro] = useState("todos"); // todos | pendentes | retornados
   const [carregando, setCarregando] = useState(true);
   const f = useFiltros(COLUNAS);
@@ -79,6 +80,14 @@ export default function Retorno() {
       setLinhas((ls) => ls.map((l) => (l.id === id ? antes : l)));
       throw error;
     }
+  }
+
+  // Observação (ex.: pane mecânica, carro no prego): ocupa o lugar de Cancel. / Reentr. / Pend.
+  function abrirObs(id) { setObsAbertas((s) => new Set(s).add(id)); }
+  async function tirarObs(l) {
+    if (l.obs && !confirm(`Tirar a observação de ${l.placa}?\n"${l.obs}"`)) return;
+    setObsAbertas((s) => { const n = new Set(s); n.delete(l.id); return n; });
+    if (l.obs) { try { await atualizar(l.id, { obs: "" }); } catch (e) { alert(e.message); } }
   }
 
   async function checkout(l) {
@@ -192,9 +201,29 @@ export default function Retorno() {
                       <td>{l.entregador}</td>
                       <td>{l.destino}</td>
                       <td>{l.hora_saida ? fmtHora(l.hora_saida) : <span className="t-laranja">a sair</span>}</td>
-                      <td className="n"><CampoEditavel tipo="number" min={0} largura="4em" className="n" valor={l.cancelados ?? 0} aoSalvar={(v) => atualizar(l.id, { cancelados: v })} /></td>
-                      <td className="n"><CampoEditavel tipo="number" min={0} largura="4em" className="n" valor={l.reentregas ?? 0} aoSalvar={(v) => atualizar(l.id, { reentregas: v })} /></td>
-                      <td className="n"><CampoEditavel tipo="number" min={0} largura="4em" className="n" valor={l.pendentes ?? 0} aoSalvar={(v) => atualizar(l.id, { pendentes: v })} /></td>
+                      {l.obs || obsAbertas.has(l.id) ? (
+                        <td colSpan={3} className="obs-celula" title="Observação">
+                          <div className="obs-linha">
+                            <span className="obs-icone">📝</span>
+                            <CampoEditavel
+                              valor={l.obs || ""} placeholder="Ex.: pane mecânica, carro no prego…" autoFocus={!l.obs}
+                              aoSalvar={(v) => atualizar(l.id, { obs: v })}
+                            />
+                            <button className="btn link perigo nao-imprimir" title="Tirar a observação (volta para Cancel. / Reentr. / Pend.)" onClick={() => tirarObs(l)}>✕</button>
+                          </div>
+                        </td>
+                      ) : (
+                        <>
+                          <td className="n"><CampoEditavel tipo="number" min={0} largura="4em" className="n" valor={l.cancelados ?? 0} aoSalvar={(v) => atualizar(l.id, { cancelados: v })} /></td>
+                          <td className="n"><CampoEditavel tipo="number" min={0} largura="4em" className="n" valor={l.reentregas ?? 0} aoSalvar={(v) => atualizar(l.id, { reentregas: v })} /></td>
+                          <td className="n">
+                            <div className="pend-linha">
+                              <CampoEditavel tipo="number" min={0} largura="4em" className="n" valor={l.pendentes ?? 0} aoSalvar={(v) => atualizar(l.id, { pendentes: v })} />
+                              <button className="btn-obs nao-imprimir" title="Adicionar observação (ex.: pane mecânica, carro no prego)" onClick={() => abrirObs(l.id)}>📝</button>
+                            </div>
+                          </td>
+                        </>
+                      )}
                       <td className="c">
                         <input type="checkbox" checked={!!l.celular_devolvido} onChange={(e) => atualizar(l.id, { celular_devolvido: e.target.checked }).catch((er) => alert(er.message))} />
                       </td>
