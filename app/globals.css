@@ -1,4 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Questrial&display=swap');
 :root {
   --fundo: #f3f5f7;
   --cartao: #ffffff;
@@ -20,8 +19,10 @@
 * { box-sizing: border-box; }
 button, input, select, textarea { font-family: inherit; }
 html, body { margin: 0; padding: 0; }
+body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility; }
 body {
-  font-family: "Century Gothic", CenturyGothic, "URW Gothic", "URW Gothic L", AppleGothic, "Questrial", "Segoe UI", Arial, sans-serif;
+  font-family: "Poppins", "Segoe UI", Arial, sans-serif;
+  font-synthesis: none; /* nunca "inventar" negrito: é isso que deixa a letra embaçada */
   background: var(--fundo);
   color: var(--texto);
   font-size: 14px;
@@ -36,7 +37,7 @@ code { background: #eef1f5; padding: 1px 5px; border-radius: 4px; margin: 0 3px;
   background: var(--topo); color: #fff; display: flex; align-items: center; gap: 24px;
   padding: 0 14px; height: 44px; position: sticky; top: 0; z-index: 10; flex-wrap: wrap;
 }
-.marca { font-weight: 800; font-size: 1.05rem; letter-spacing: .3px; white-space: nowrap; }
+.marca { font-weight: 700; font-size: 1.05rem; letter-spacing: .3px; white-space: nowrap; }
 .marca span { font-weight: 400; opacity: .75; margin-left: 6px; font-size: .9rem; }
 .marca.grande { font-size: 1.4rem; color: var(--topo); margin-bottom: 12px; }
 .marca.grande span { display: block; margin: 2px 0 0; color: var(--suave); }
@@ -187,7 +188,7 @@ tr.l-pendente td { background: var(--vermelho-fundo) !important; }
 /* ---------- presença: quem está no site e em qual célula ---------- */
 .avatar {
   display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 50%;
-  color: #fff; font-size: 11px; font-weight: 800; border: 2px solid rgba(255,255,255,.85); flex: 0 0 auto;
+  color: #fff; font-size: 11px; font-weight: 700; border: 2px solid rgba(255,255,255,.85); flex: 0 0 auto;
 }
 .presenca { display: flex; align-items: center; gap: 0; margin-left: auto; }
 .presenca .avatar { margin-left: -6px; cursor: default; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
@@ -316,11 +317,11 @@ tr.l-fora td { opacity: .45; }
 /* ---------- impressão (frete para a portaria) ---------- */
 /* ---------- modo compacto: linhas baixas para caber tudo na tela ---------- */
 @media screen {
-  table { font-size: 13.5px; font-weight: 700; }
-  th { font-size: .74rem; font-weight: 800; }
+  table { font-size: 13px; font-weight: 600; }
+  th { font-size: .72rem; font-weight: 700; }
   th { padding: 3px 6px; }
   td { height: 22px; padding: 0 6px; line-height: 1.2; }
-  .campo-ed { height: 20px; padding: 0 5px; line-height: 18px; font-size: 13.5px; font-weight: 700; font-family: inherit; }
+  .campo-ed { height: 20px; padding: 0 5px; line-height: 18px; font-size: 13px; font-weight: 600; font-family: inherit; }
   .campo-ed.hora { height: 19px; padding: 0 4px; }
   td .btn.mini { padding: 0 8px; height: 18px; font-size: .74rem; line-height: 16px; }
   td .btn.link { padding: 0 3px; }
@@ -388,14 +389,3 @@ tr.l-fora td { opacity: .45; }
 table.retorno tbody tr.l-ret-pend td:not(.ct):not(.c-data) { background: #fff0e0; }
 table.retorno tbody tr.l-ret-ok td:not(.ct):not(.c-data) { background: #bfe8cb; }
 @media print { table.retorno tbody tr td { background: none !important; } }
-
-/* ---------- fontes mais negritas ---------- */
-/* Century Gothic só tem até "Bold"; o contorno fino (text-stroke) deixa o traço mais grosso */
-body { font-weight: 700; }
-.topo nav a, .btn, .btn.link, .alternar button, .kpi span, .campo-data, label { font-weight: 700; }
-table, table th, table td, .campo-ed, .campo-ed.seletor, input, select, textarea, .kpi b {
-  font-weight: 800; -webkit-text-stroke: 0.3px currentColor;
-}
-table tbody td.ct { font-weight: 800; }
-input::placeholder, .campo-ed::placeholder { -webkit-text-stroke: 0; }
-@media print { table, table th, table td { -webkit-text-stroke: 0.2px currentColor; } }
