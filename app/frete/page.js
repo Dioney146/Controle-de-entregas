@@ -78,6 +78,20 @@ export default function Frete() {
     }
   }
 
+  // troca de placa: se a placa estiver no cadastro de veículos, já traz a transportadora e o tipo
+  async function trocarPlaca(l, valor) {
+    const placa = normPlaca(valor);
+    if (!placa) throw new Error("A placa não pode ficar em branco.");
+    if (placa === l.placa) return;
+    const repetida = linhas.find((x) => x.id !== l.id && x.placa === placa);
+    if (repetida && !confirm(`A placa ${placa} já está neste frete. Usar mesmo assim?`)) return false;
+    const v = veiculos.find((x) => x.placa === placa);
+    const campos = { placa };
+    if (v?.transportadora) campos.transportadora = v.transportadora;
+    if (v?.tipo) campos.tipo = v.tipo;
+    await atualizar(l.id, campos);
+  }
+
   async function definirSaida(l, hhmm) {
     if (l.status === "RETORNOU" && !hhmm) return alert("Esse veículo já retornou. Desfaça o checkout no Retorno antes.");
     const campos = hhmm
@@ -233,8 +247,8 @@ export default function Frete() {
                   <tr key={l.id} data-id={l.id} className={`${l.status === "PROGRAMADO" ? "" : "l-verde"} ${l.arquivado ? "l-arquivado" : ""} ${verPendencias && !l.arquivado && pendencias(l).length ? "l-pendente" : ""}`}>
                     <td className="c-data">{fmtData(l.data).slice(0, 5)}</td>
                     <td><CampoEditavel valor={l.zona} largura="6em" aoSalvar={(v) => atualizar(l.id, { zona: v })} /></td>
-                    <td className="placa">{l.placa}</td>
-                    <td className={corTrans(l.transportadora)}>{l.transportadora}</td>
+                    <td className="placa"><CampoEditavel valor={l.placa} largura="7em" lista="lista-placas" aoSalvar={(v) => trocarPlaca(l, v)} /></td>
+                    <td className={corTrans(l.transportadora)}><CampoEditavel valor={l.transportadora} largura="8em" lista="lista-trans" aoSalvar={(v) => atualizar(l.id, { transportadora: v })} /></td>
                     <td className="n"><CampoEditavel tipo="number" min={0} valor={l.entregas ?? ""} largura="4em" className="n" aoSalvar={(v) => atualizar(l.id, { entregas: v })} /></td>
                     <td className="n">{num(l.kg)}</td>
                     <td><SeletorPessoa lista={pessoas} funcao="MOTORISTA" valor={l.motorista} placeholder="motorista…" aoSalvar={(v) => atualizar(l.id, { motorista: v })} /></td>
@@ -280,6 +294,9 @@ export default function Frete() {
       </section>
 
       <datalist id="lista-placas">{veiculos.map((v) => <option key={v.placa} value={v.placa}>{v.transportadora} · {v.tipo}</option>)}</datalist>
+      <datalist id="lista-trans">
+        {[...new Set([...veiculos, ...linhas].map((x) => (x.transportadora || "").trim().toUpperCase()).filter(Boolean))].sort().map((t) => <option key={t} value={t} />)}
+      </datalist>
     </>
   );
 }
