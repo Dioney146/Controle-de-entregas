@@ -38,6 +38,7 @@ export default function Frete() {
   const [carregando, setCarregando] = useState(true);
   const [novaPlaca, setNovaPlaca] = useState("");
   const [verPendencias, setVerPendencias] = useState(false);
+  const [menuImp, setMenuImp] = useState(false);
   const [excluindo, setExcluindo] = useState(null);     // linha aguardando o motivo
   const [excluidas, setExcluidas] = useState([]);       // removidas nesta data (com motivo)
   const [verExcluidas, setVerExcluidas] = useState(false);
@@ -225,6 +226,16 @@ export default function Frete() {
     setNovaPlaca("");
   }
 
+  // Impressão com ou sem os nomes de motorista e entregadores
+  function imprimir(comNomes) {
+    setMenuImp(false);
+    const raiz = document.documentElement;
+    raiz.classList.toggle("imp-sem-nomes", !comNomes);
+    const limpar = () => { raiz.classList.remove("imp-sem-nomes"); window.removeEventListener("afterprint", limpar); };
+    window.addEventListener("afterprint", limpar);
+    setTimeout(() => window.print(), 50);
+  }
+
   if (!data) return <div className="carregando">Carregando…</div>;
 
   const aSair = linhas.filter((l) => l.status === "PROGRAMADO").length;
@@ -258,7 +269,15 @@ export default function Frete() {
           <button className="btn verde" onClick={enviarHistorico} disabled={!exibidas.some((l) => !l.arquivado)} title="Só envia se motorista, entregador e saída estiverem preenchidos">
             ✓ Enviar para o histórico
           </button>
-          <button className="btn primario" onClick={() => window.print()} disabled={!linhas.length}>Imprimir frete</button>
+          <div className="menu-imprimir" tabIndex={-1} onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setMenuImp(false); }}>
+            <button className="btn primario" onClick={() => setMenuImp((v) => !v)} disabled={!linhas.length}>Imprimir frete ▾</button>
+            {menuImp && (
+              <div className="menu-imprimir-lista">
+                <button onClick={() => imprimir(true)}>🖨️ Com nomes <small>(motorista e entregadores)</small></button>
+                <button onClick={() => imprimir(false)}>🖨️ Sem nomes <small>(colunas em branco)</small></button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -285,14 +304,14 @@ export default function Frete() {
             <table className="frete" ref={refTabela} data-tabela="frete">
               <thead>
                 <tr>
-                  <ThFiltro f={f} col="data" linhas={linhas}>Data</ThFiltro>
-                  <ThFiltro f={f} col="zona" linhas={linhas}>Zona</ThFiltro>
+                  <ThFiltro f={f} col="data" linhas={linhas} className="col-data">Data</ThFiltro>
+                  <ThFiltro f={f} col="zona" linhas={linhas} className="col-zona">Zona</ThFiltro>
                   <ThFiltro f={f} col="placa" linhas={linhas}>Placa</ThFiltro>
                   <ThFiltro f={f} col="trans" linhas={linhas}>Trans</ThFiltro>
                   <ThFiltro f={f} col="ent" linhas={linhas} className="n">Ent.</ThFiltro>
                   <ThFiltro f={f} col="kg" linhas={linhas} className="n">KG</ThFiltro>
-                  <ThFiltro f={f} col="motorista" linhas={linhas}>Motorista</ThFiltro>
-                  <ThFiltro f={f} col="entregador" linhas={linhas}>Entregadores</ThFiltro>
+                  <ThFiltro f={f} col="motorista" linhas={linhas} className="col-nome">Motorista</ThFiltro>
+                  <ThFiltro f={f} col="entregador" linhas={linhas} className="col-nome">Entregadores</ThFiltro>
                   <ThFiltro f={f} col="infor" linhas={linhas}>Infor</ThFiltro>
                   <ThFiltro f={f} col="valor" linhas={linhas} className="n">Valor</ThFiltro>
                   <ThFiltro f={f} col="saida" linhas={linhas}>Saída</ThFiltro>
@@ -303,14 +322,14 @@ export default function Frete() {
               <tbody>
                 {exibidas.map((l) => (
                   <tr key={l.id} data-id={l.id} className={`${l.status === "PROGRAMADO" ? "" : "l-verde"} ${l.arquivado ? "l-arquivado" : ""} ${verPendencias && !l.arquivado && pendencias(l).length ? "l-pendente" : ""}`}>
-                    <td className="c-data">{fmtData(l.data).slice(0, 5)}</td>
-                    <td><CampoEditavel valor={l.zona} largura="6em" aoSalvar={(v) => atualizar(l.id, { zona: v })} /></td>
+                    <td className="c-data col-data">{fmtData(l.data).slice(0, 5)}</td>
+                    <td className="col-zona"><CampoEditavel valor={l.zona} largura="6em" aoSalvar={(v) => atualizar(l.id, { zona: v })} /></td>
                     <td className="placa"><CampoEditavel valor={l.placa} largura="7em" lista="lista-placas" aoSalvar={(v) => trocarPlaca(l, v)} /></td>
                     <td className={corTrans(l.transportadora)}><CampoEditavel valor={l.transportadora} largura="8em" lista="lista-trans" aoSalvar={(v) => atualizar(l.id, { transportadora: v })} /></td>
                     <td className="n"><CampoEditavel tipo="number" min={0} valor={l.entregas ?? ""} largura="4em" className="n" aoSalvar={(v) => atualizar(l.id, { entregas: v })} /></td>
                     <td className="n">{num(l.kg)}</td>
-                    <td><SeletorPessoa lista={pessoas} funcao="MOTORISTA" valor={l.motorista} placeholder="motorista…" aoSalvar={(v) => atualizar(l.id, { motorista: v })} /></td>
-                    <td><SeletorPessoa lista={pessoas} funcao="ENTREGADOR" multiplo valor={l.entregador} placeholder="entregador…" aoSalvar={(v) => atualizar(l.id, { entregador: v })} /></td>
+                    <td className="col-nome"><SeletorPessoa lista={pessoas} funcao="MOTORISTA" valor={l.motorista} placeholder="motorista…" aoSalvar={(v) => atualizar(l.id, { motorista: v })} /></td>
+                    <td className="col-nome"><SeletorPessoa lista={pessoas} funcao="ENTREGADOR" multiplo valor={l.entregador} placeholder="entregador…" aoSalvar={(v) => atualizar(l.id, { entregador: v })} /></td>
                     <td><CampoEditavel valor={l.destino} largura="12em" aoSalvar={(v) => atualizar(l.id, { destino: v })} /></td>
                     <td className="n">{moeda(l.valor)}</td>
                     <td className="saida"><div className="saida-box">
@@ -329,7 +348,8 @@ export default function Frete() {
               </tbody>
               <tfoot>
                 <tr>
-                  <td colSpan={4}>TOTAL · {exibidas.length} veículos</td>
+                  <td colSpan={2} className="nao-imprimir">TOTAL · {exibidas.length} veículos</td>
+                  <td colSpan={2}><span className="so-imprimir">TOTAL · {exibidas.length} veículos</span></td>
                   <td className="n">{num(somaVis("entregas"))}</td><td className="n">{num(somaVis("kg"))}</td>
                   <td colSpan={3}></td><td className="n">{moeda(somaVis("valor"))}</td><td></td>
                   <td className="nao-imprimir" colSpan={2}></td>
