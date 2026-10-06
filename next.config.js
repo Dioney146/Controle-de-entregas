@@ -7,5 +7,6 @@ module.exports = {
     NEXT_PUBLIC_SUPABASE_ANON_KEY: (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || "").trim(),
     // endereço do site de Transferências (link no menu)
     NEXT_PUBLIC_URL_TRANSFERENCIAS: (process.env.NEXT_PUBLIC_URL_TRANSFERENCIAS || process.env.URL_TRANSFERENCIAS || "").trim(),
+    NEXT_PUBLIC_URL_DEVOLUCOES: (process.env.NEXT_PUBLIC_URL_DEVOLUCOES || process.env.URL_DEVOLUCOES || "").trim(),
   },
 };
