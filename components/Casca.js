@@ -24,6 +24,7 @@ const MENU = [
 
 // Site de Transferências (separado, na Vercel). Pode trocar pela variável URL_TRANSFERENCIAS na Vercel.
 const URL_TRANSFERENCIAS = process.env.NEXT_PUBLIC_URL_TRANSFERENCIAS || "https://reentregas-dellys.vercel.app";
+const URL_DEVOLUCOES = process.env.NEXT_PUBLIC_URL_DEVOLUCOES || "https://devolucoes-dellys.vercel.app";
 
 const ler = (k, padrao) => { try { return JSON.parse(localStorage.getItem(k)) ?? padrao; } catch { return padrao; } };
 const gravar = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
@@ -101,6 +102,9 @@ export default function Casca({ children }) {
           ))}
           <a href={URL_TRANSFERENCIAS} target="_blank" rel="noopener noreferrer" className="link-externo" title="Abrir o site de Transferências">
             Transferências ↗
+          </a>
+          <a href={URL_DEVOLUCOES} target="_blank" rel="noopener noreferrer" className="link-externo" title="Abrir o site de Devoluções">
+            Devoluções ↗
           </a>
         </nav>
         <Presenca nome={nome} pagina={caminho} />
