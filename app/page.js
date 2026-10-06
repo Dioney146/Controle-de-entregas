@@ -9,6 +9,7 @@ import { useUsuario } from "../components/Casca";
 import { guardarDataTrabalho, useTempoReal } from "../lib/hooks";
 import { useColunas } from "../lib/colunas";
 import { desfazerFrete } from "../lib/frete";
+import VeiculosDisponiveis from "../components/VeiculosDisponiveis";
 import {
   hojeISO, somarDias, fmtData, num, moeda, pct, zonaDaDescricao, entregadorDoRoadnet, corTrans,
 } from "../lib/util";
@@ -33,6 +34,7 @@ export default function Programacao() {
   const [excluidas, setExcluidas] = useState({}); // chave -> true (desmarcada)
   const [incluidasSemCarga, setIncluidasSemCarga] = useState({}); // placa -> true
   const [mostrarSemCarga, setMostrarSemCarga] = useState(true);
+  const [verDisponiveis, setVerDisponiveis] = useState(false);
 
   // A Programação mostra SÓ a última base importada do RoadNet (igual para todo mundo).
   // Não guarda histórico: cada importação substitui a anterior.
@@ -105,6 +107,7 @@ export default function Programacao() {
   const selecionadas = linhas.filter(vaiSair);
 
   const datas = [...new Set(rotas.map((r) => r.data))].sort();
+  const placasNaProgramacao = useMemo(() => new Set(rotas.map((r) => String(r.placa || "").trim().toUpperCase().replace(/[\s-]/g, ""))), [rotas]);
   const importadoEm = rotas.reduce((m, r) => (r.created_at > m ? r.created_at : m), "");
   const importadoPor = rotas.find((r) => r.created_at === importadoEm)?.created_by || "";
   const qtdProgramado = saidasDia.filter((s) => s.status === "PROGRAMADO").length;
@@ -278,6 +281,14 @@ export default function Programacao() {
         </div>
       )}
 
+      {verDisponiveis && (
+        <VeiculosDisponiveis
+          placasNaProgramacao={placasNaProgramacao}
+          dataRef={datas[0] || hojeISO()}
+          cadastro={mapaVeic}
+        />
+      )}
+
       <section className="cartao sem-pad">
         <div className="barra-tabela">
           <div>
@@ -292,6 +303,9 @@ export default function Programacao() {
             )}
           </div>
           <div className="linha-acoes">
+            <button className={`btn ${verDisponiveis ? "ativo-azul" : ""}`} onClick={() => setVerDisponiveis((v) => !v)} title="Veículos que mais usamos e que estão livres (fora desta programação)">
+              🚚 Veículos disponíveis {verDisponiveis ? "▲" : "▼"}
+            </button>
             <button className="btn link" title="Volta as colunas para o auto ajuste" onClick={ajustarColunas}>↔ ajustar colunas</button>
             <label className="check"><input type="checkbox" checked={mostrarSemCarga} onChange={(e) => setMostrarSemCarga(e.target.checked)} /> mostrar sem carga</label>
             <button className="btn primario" disabled={!selecionadas.length} onClick={gerarFrete}>

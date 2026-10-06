@@ -419,3 +419,26 @@ tr:hover .btn-obs { opacity: .9; }
   html.imp-sem-nomes table.frete td.col-nome * { visibility: hidden !important; }
   table tbody td:hover { background: none !important; color: #000 !important; outline: none !important; }
 }
+
+/* ---------- Programação: veículos disponíveis ---------- */
+.btn.ativo-azul { background: #e3effb; border-color: var(--primaria); color: var(--primaria-esc); }
+.cartao.disponiveis { padding: 10px 12px; margin-bottom: 10px; }
+.disp-cab { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+.disp-grupos { display: flex; flex-direction: column; gap: 8px; }
+.disp-grupo { display: flex; gap: 10px; align-items: stretch; }
+.disp-trans { min-width: 120px; display: flex; flex-direction: column; justify-content: center; padding: 6px 10px; border-radius: 6px; font-weight: 700; border: 1px solid var(--borda); }
+.disp-trans small { font-weight: 500; opacity: .8; }
+.disp-lista { display: flex; flex-wrap: wrap; gap: 6px; flex: 1; }
+.disp-veic { display: grid; grid-template-columns: auto auto; gap: 1px 8px; align-items: center; border: 1px solid var(--borda); border-radius: 6px; padding: 5px 8px; background: #fff; min-width: 150px; }
+.disp-veic.em-rota { border-style: dashed; opacity: .7; }
+.disp-placa { font-family: Consolas, monospace; font-weight: 700; }
+.disp-tipo { color: var(--suave); font-size: .78rem; text-align: right; }
+.disp-uso { grid-column: 1 / -1; height: 4px; background: #eef1f5; border-radius: 2px; overflow: hidden; }
+.disp-uso i { display: block; height: 100%; background: var(--verde); }
+.disp-veic small { grid-column: 1 / -1; color: var(--suave); font-size: .72rem; }
+.disp-trans.ct-mamba  { background: #7fcf86; color: #0f3d14; }
+.disp-trans.ct-hok    { background: #cfe6fb; color: #0b3a66; }
+.disp-trans.ct-cmg    { background: #e3e6ea; color: #333d48; }
+.disp-trans.ct-jb     { background: #ffffff; color: #1d2733; }
+.disp-trans.ct-ralph  { background: #fdd7b0; color: #6b3500; }
+.disp-trans.ct-amorim { background: #1f3f74; color: #ffffff; }
