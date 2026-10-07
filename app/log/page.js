@@ -13,13 +13,13 @@ const TELA = { saidas: "Frete / Retorno", veiculos: "Veículos", pessoas: "Motor
 const CAMPO = {
   motorista: "Motorista", entregador: "Entregadores", hora_saida: "Saída", status: "Status",
   cancelados: "Cancelados", reentregas: "Reentregas", pendentes: "Pendentes", celular_devolvido: "Celular devolvido",
-  checkout_em: "Checkout", checkout_por: "Checkout por", arquivado: "Enviado ao histórico", liberado_retorno: "Liberado p/ Retorno", zona: "Zona",
+  checkout_em: "Checkout", checkout_por: "Checkout por", arquivado: "Enviado ao histórico", liberado_retorno: "Liberado p/ Retorno", manual: "Adicionado à mão", zona: "Zona",
   entregas: "Entregas", destino: "Infor", obs: "Obs", kg: "KG", valor: "Valor", transportadora: "Transportadora",
   tipo: "Tipo", nome: "Nome", funcao: "Função", ativo: "Ativo", ordem: "Ordem", data: "Data", placa: "Placa",
   registros: "Registros", motivo: "Motivo da exclusão",
 };
 const STATUS = { PROGRAMADO: "A sair", EM_ROTA: "Saiu", RETORNOU: "Retornou" };
-const ESCONDER = new Set(["arquivado_em", "arquivado_por", "ordem", "liberado_retorno_em", "liberado_retorno_por"]); // detalhes repetidos
+const ESCONDER = new Set(["arquivado_em", "arquivado_por", "ordem", "liberado_retorno_em", "liberado_retorno_por", "adicionado_por"]); // detalhes repetidos
 
 function valor(campo, v) {
   if (v === null || v === undefined || v === "") return "";

@@ -11,7 +11,8 @@ import { useFiltros, ThFiltro } from "../../components/FiltroColuna";
 import SeletorPessoa, { usePessoas } from "../../components/SeletorPessoa";
 import MotivoExclusao from "../../components/MotivoExclusao";
 import { useUsuario } from "../../components/Casca";
-import { fmtData, fmtDataHora, horaInput, horaParaTimestamp, num, moeda, normPlaca, corTrans } from "../../lib/util";
+import { fmtData, fmtDataHora, horaInput, horaParaTimestamp, num, moeda, normPlaca, corTrans, lerNumeroBR } from "../../lib/util";
+import MarcaManual from "../../components/MarcaManual";
 
 const ROTULO = { PROGRAMADO: "A sair", EM_ROTA: "Saiu", RETORNOU: "Retornou" };
 
@@ -37,6 +38,9 @@ export default function Frete() {
   const [veiculos, setVeiculos] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [novaPlaca, setNovaPlaca] = useState("");
+  const [novoKg, setNovoKg] = useState("");
+  const [novoValor, setNovoValor] = useState("");
+  const [novasEnt, setNovasEnt] = useState("");
   const [verPendencias, setVerPendencias] = useState(false);
   const [menuImp, setMenuImp] = useState(false);
   const [excluindo, setExcluindo] = useState(null);     // linha aguardando o motivo
@@ -214,17 +218,29 @@ export default function Frete() {
   async function adicionar() {
     const placa = normPlaca(novaPlaca);
     if (!placa) return;
+    if (linhas.some((l) => l.placa === placa) && !confirm(`A placa ${placa} já está neste frete. Adicionar mesmo assim?`)) return;
+    const kg = lerNumeroBR(novoKg), valor = lerNumeroBR(novoValor), entregas = lerNumeroBR(novasEnt);
+    if ((novoKg && kg === null) || (novoValor && valor === null) || (novasEnt && entregas === null)) return alert("Confira o peso, o valor e as entregas: algum número está inválido.");
     const v = veiculos.find((x) => x.placa === placa) || {};
-    const { data: nova, error } = await sb().from("saidas").insert({
+    const linha = {
       data, placa, transportadora: v.transportadora || "", tipo: v.tipo || "",
       motorista: "", entregador: "", status: "PROGRAMADO",
+      kg, valor, entregas: entregas === null ? null : Math.round(entregas),
       ...(linhas.some((l) => l.liberado_retorno) ? { liberado_retorno: true, liberado_retorno_em: new Date().toISOString(), liberado_retorno_por: email || null } : {}),
       ordem: linhas.length ? Math.max(...linhas.map((l) => l.ordem || 0)) + 1 : 0,
-    }).select().single();
+    };
+    let { data: nova, error } = await sb().from("saidas").insert({ ...linha, manual: true, adicionado_por: email || null }).select().single();
+    if (error && /manual|adicionado_por/i.test(error.message || "")) {
+      // banco ainda sem o 11_veiculo_manual.sql: adiciona sem a marca
+      ({ data: nova, error } = await sb().from("saidas").insert(linha).select().single());
+    }
     if (error) return alert(error.message);
     setLinhas((ls) => [...ls, nova]);
-    setNovaPlaca("");
+    setNovaPlaca(""); setNovoKg(""); setNovoValor(""); setNovasEnt("");
   }
+
+  // peso e valor podem ser digitados nos veículos manuais (ou nos que estão sem peso/valor)
+  const editaPesoValor = (l) => !l.arquivado && (l.manual || l.kg === null || l.valor === null);
 
   // Impressão com ou sem os nomes de motorista e entregadores
   function imprimir(comNomes) {
@@ -321,17 +337,21 @@ export default function Frete() {
               </thead>
               <tbody>
                 {exibidas.map((l) => (
-                  <tr key={l.id} data-id={l.id} className={`${l.status === "PROGRAMADO" ? "" : "l-verde"} ${l.arquivado ? "l-arquivado" : ""} ${verPendencias && !l.arquivado && pendencias(l).length ? "l-pendente" : ""}`}>
+                  <tr key={l.id} data-id={l.id} className={`${l.status === "PROGRAMADO" ? "" : "l-verde"} ${l.arquivado ? "l-arquivado" : ""} ${verPendencias && !l.arquivado && pendencias(l).length ? "l-pendente" : ""} ${l.manual ? "l-manual" : ""}`}>
                     <td className="c-data col-data">{fmtData(l.data).slice(0, 5)}</td>
                     <td className="col-zona"><CampoEditavel valor={l.zona} largura="6em" aoSalvar={(v) => atualizar(l.id, { zona: v })} /></td>
-                    <td className="placa"><CampoEditavel valor={l.placa} largura="7em" lista="lista-placas" aoSalvar={(v) => trocarPlaca(l, v)} /></td>
+                    <td className="placa"><div className="placa-box"><CampoEditavel valor={l.placa} largura="7em" lista="lista-placas" aoSalvar={(v) => trocarPlaca(l, v)} /><MarcaManual linha={l} /></div></td>
                     <td className={corTrans(l.transportadora)}><CampoEditavel valor={l.transportadora} largura="8em" lista="lista-trans" aoSalvar={(v) => atualizar(l.id, { transportadora: v })} /></td>
                     <td className="n"><CampoEditavel tipo="number" min={0} valor={l.entregas ?? ""} largura="4em" className="n" aoSalvar={(v) => atualizar(l.id, { entregas: v })} /></td>
-                    <td className="n">{num(l.kg)}</td>
+                    <td className="n">{editaPesoValor(l)
+                      ? <CampoEditavel tipo="decimal" casas={0} valor={l.kg} largura="5em" className="n" placeholder="peso" aoSalvar={(v) => atualizar(l.id, { kg: v })} />
+                      : num(l.kg)}</td>
                     <td className="col-nome"><SeletorPessoa lista={pessoas} funcao="MOTORISTA" valor={l.motorista} placeholder="motorista…" aoSalvar={(v) => atualizar(l.id, { motorista: v })} /></td>
                     <td className="col-nome"><SeletorPessoa lista={pessoas} funcao="ENTREGADOR" multiplo valor={l.entregador} placeholder="entregador…" aoSalvar={(v) => atualizar(l.id, { entregador: v })} /></td>
                     <td><CampoEditavel valor={l.destino} largura="12em" aoSalvar={(v) => atualizar(l.id, { destino: v })} /></td>
-                    <td className="n">{moeda(l.valor)}</td>
+                    <td className="n">{editaPesoValor(l)
+                      ? <CampoEditavel tipo="decimal" valor={l.valor} largura="7em" className="n" placeholder="valor R$" aoSalvar={(v) => atualizar(l.id, { valor: v })} />
+                      : moeda(l.valor)}</td>
                     <td className="saida"><div className="saida-box">
                       <input type="time" className="campo-ed hora nao-imprimir" value={horaInput(l.hora_saida)} onChange={(e) => definirSaida(l, e.target.value)} />
                       <span className="so-imprimir">{horaInput(l.hora_saida)}</span>
@@ -360,8 +380,17 @@ export default function Frete() {
         )}
         <div className="barra-tabela nao-imprimir">
           <div className="linha-acoes">
-            <input list="lista-placas" className="campo" placeholder="Adicionar placa ao frete…" value={novaPlaca} onChange={(e) => setNovaPlaca(e.target.value.toUpperCase())} />
-            <button className="btn" onClick={adicionar} disabled={!novaPlaca}>Adicionar</button>
+            <form className="add-veiculo" onSubmit={(e) => { e.preventDefault(); adicionar(); }}>
+              <input list="lista-placas" className="campo" placeholder="Adicionar placa ao frete…" value={novaPlaca} onChange={(e) => setNovaPlaca(e.target.value.toUpperCase())} />
+              {novaPlaca && (
+                <>
+                  <input className="campo n curto" inputMode="numeric" placeholder="Entregas" value={novasEnt} onChange={(e) => setNovasEnt(e.target.value)} />
+                  <input className="campo n curto" inputMode="decimal" placeholder="Peso (kg)" value={novoKg} onChange={(e) => setNovoKg(e.target.value)} />
+                  <input className="campo n" inputMode="decimal" placeholder="Valor (R$)" value={novoValor} onChange={(e) => setNovoValor(e.target.value)} />
+                </>
+              )}
+              <button className="btn" disabled={!novaPlaca}>Adicionar</button>
+            </form>
             <button className="btn link" title="Volta as colunas para o auto ajuste" onClick={ajustarColunas}>↔ ajustar colunas</button>
           </div>
           <div className="linha-acoes">

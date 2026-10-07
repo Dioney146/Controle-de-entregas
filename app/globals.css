@@ -442,3 +442,16 @@ tr:hover .btn-obs { opacity: .9; }
 .disp-trans.ct-jb     { background: #ffffff; color: #1d2733; }
 .disp-trans.ct-ralph  { background: #fdd7b0; color: #6b3500; }
 .disp-trans.ct-amorim { background: #1f3f74; color: #ffffff; }
+
+/* veículo adicionado manualmente no frete: sinal discreto na placa */
+.placa-box { display: inline-flex; align-items: center; gap: 3px; }
+.marca-manual {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 13px; height: 13px; border-radius: 50%; margin-left: 3px; vertical-align: 1px;
+  font-size: 8.5px; font-weight: 700; line-height: 1; cursor: help;
+  color: #9a6a12; background: #fdf1d6; border: 1px solid #ecd28f;
+}
+tr.l-manual > td.placa { box-shadow: inset 2px 0 0 #e8c46a; }
+.add-veiculo { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin: 0; }
+.add-veiculo .campo.n { width: 110px; text-align: right; }
+.add-veiculo .campo.curto { width: 90px; }

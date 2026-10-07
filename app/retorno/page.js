@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import MarcaManual from "../../components/MarcaManual";
 import { sb } from "../../lib/supabase";
 import { useDataDaUrl, useTempoReal } from "../../lib/hooks";
 import { useUsuario } from "../../components/Casca";
@@ -193,7 +194,7 @@ export default function Retorno() {
                   return (
                     <tr key={l.id} data-id={l.id} className={ok ? "l-ret-ok" : "l-ret-pend"}>
                       {modo === "emrota" && <td className="c-data">{fmtData(l.data).slice(0, 5)}</td>}
-                      <td className="placa">{l.placa}</td>
+                      <td className="placa">{l.placa}<MarcaManual linha={l} /></td>
                       <td className={corTrans(l.transportadora)}>{l.transportadora}</td>
                       <td className="n">{l.entregas}</td>
                       <td className="n">{num(l.kg)}</td>
