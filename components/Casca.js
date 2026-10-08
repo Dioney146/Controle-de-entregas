@@ -43,7 +43,8 @@ function Entrar({ aoEntrar }) {
   return (
     <div className="login">
       <form className="cartao login-cartao" onSubmit={(e) => { e.preventDefault(); entrar(nome); }}>
-        <div className="marca grande">Delly's <span>Controle de Entregas</span></div>
+        <img src="/logo-dellys.png" alt="Delly's Food Service" className="logo-login" />
+          <div className="marca grande"><span>Controle de Entregas</span></div>
         <label>Quem está usando?
           <input autoFocus placeholder="Digite seu nome" value={nome} onChange={(e) => setNome(e.target.value.toUpperCase())} />
         </label>
@@ -73,7 +74,8 @@ export default function Casca({ children }) {
     return (
       <div className="login">
         <div className="cartao login-cartao">
-          <div className="marca grande">Delly's <span>Controle de Entregas</span></div>
+          <img src="/logo-dellys.png" alt="Delly's Food Service" className="logo-login" />
+          <div className="marca grande"><span>Controle de Entregas</span></div>
           <div className="alerta erro">
             Falta configurar o Supabase. Na Vercel, vá em <b>Settings → Environment Variables</b> e crie
             <code>SUPABASE_URL</code> e <code>SUPABASE_ANON_KEY</code>. Depois faça um novo deploy.
@@ -95,7 +97,7 @@ export default function Casca({ children }) {
   return (
     <UsuarioCtx.Provider value={{ email: nome }}>
       <header className="topo nao-imprimir">
-        <div className="marca">Delly's <span>Controle de Entregas · AM</span></div>
+        <div className="marca"><img src="/logo-d.png" alt="" className="marca-img" />Delly's <span>Controle de Entregas · AM</span></div>
         <nav>
           {MENU.map((m) => (
             <Link key={m.href} href={m.href} className={caminho === m.href ? "ativo" : ""}>{m.rotulo}</Link>
