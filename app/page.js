@@ -287,7 +287,6 @@ export default function Programacao() {
 
       {porTrans.length > 0 && (
         <section className="por-trans">
-          <span className="por-trans-tit">🚚 Indo para o frete <b>{selecionadas.length}</b></span>
           {porTrans.map((g) => (
             <span key={g.trans} className={`chip-trans ${corTrans(g.trans)}`}
               title={`${g.trans}: ${g.qtd} veículo(s) · ${num(g.peso)} kg · ${moeda(g.valor)}`}>
@@ -327,8 +326,8 @@ export default function Programacao() {
             )}
           </div>
           <div className="linha-acoes">
-            <button className={`btn ${verDisponiveis ? "ativo-azul" : ""}`} onClick={() => setVerDisponiveis((v) => !v)} title="Veículos que mais usamos e que estão livres (fora desta programação)">
-              🚚 Veículos disponíveis {verDisponiveis ? "▲" : "▼"}
+            <button className={`btn btn-disp ${verDisponiveis ? "aberto" : ""}`} onClick={() => setVerDisponiveis((v) => !v)} title="Veículos que mais usamos e que estão livres (fora desta programação)">
+              Veículos disponíveis {verDisponiveis ? "▲" : "▼"}
             </button>
             <button className="btn link" title="Volta as colunas para o auto ajuste" onClick={ajustarColunas}>↔ ajustar colunas</button>
             <label className="check"><input type="checkbox" checked={mostrarSemCarga} onChange={(e) => setMostrarSemCarga(e.target.checked)} /> mostrar sem carga</label>

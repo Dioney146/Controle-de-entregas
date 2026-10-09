@@ -478,3 +478,23 @@ tr.l-manual > td.placa { box-shadow: inset 2px 0 0 #e8c46a; }
 .chip-trans.ct-ralph  { background: #fdd7b0; color: #6b3500; }
 .chip-trans.ct-amorim { background: #1f3f74; color: #fff; }
 .chip-trans.ct-amorim b { background: rgba(255,255,255,.22); }
+
+/* botão Veículos disponíveis (mais visível) */
+.btn.btn-disp { background: #e7f6ec; border: 1.5px solid #2e9d55; color: #17663a; font-weight: 700; }
+.btn.btn-disp:hover { background: #d4efdd; }
+.btn.btn-disp.aberto { background: #2e9d55; color: #fff; }
+
+/* barra de cima: todas as abas cabem na tela, sem rolagem lateral */
+.topo { height: auto; min-height: 44px; flex-wrap: nowrap; gap: clamp(8px, 1.1vw, 24px); }
+.topo nav { flex: 1 1 auto; min-width: 0; flex-wrap: wrap; overflow: visible; gap: 2px; padding: 3px 0; }
+.topo nav a { font-size: clamp(.72rem, .48rem + .33vw, .95rem); padding: 7px clamp(4px, .55vw, 12px); }
+.topo nav a.link-externo { margin-left: clamp(2px, .3vw, 6px); }
+.marca { font-size: clamp(.9rem, .7rem + .3vw, 1.05rem); }
+.presenca { max-width: 24vw; flex: 0 1 auto; min-width: 0; }
+.presenca-so { white-space: nowrap; }
+@media (max-width: 1780px) { .topo .marca span { display: none; } }
+@media (max-width: 1440px) { .usuario .nome-logado { display: none; } .presenca { max-width: 14vw; } .presenca-so { display: none; } }
+@media (max-width: 720px) {
+  .topo { flex-wrap: wrap; }
+  .topo nav { order: 3; flex-basis: 100%; }
+}
