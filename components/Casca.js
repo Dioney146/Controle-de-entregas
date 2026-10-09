@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
+import { erroNome, nomeValido, normalizarNome } from "../lib/nome";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { configurado, definirUsuario } from "../lib/supabase";
@@ -29,13 +30,15 @@ const URL_DEVOLUCOES = process.env.NEXT_PUBLIC_URL_DEVOLUCOES || "https://devolu
 const ler = (k, padrao) => { try { return JSON.parse(localStorage.getItem(k)) ?? padrao; } catch { return padrao; } };
 const gravar = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
 
-function Entrar({ aoEntrar }) {
+function Entrar({ aoEntrar, aviso }) {
   const [nome, setNome] = useState("");
-  const recentes = ler("nomesRecentes", []);
+  const [erro, setErro] = useState(aviso || "");
+  const recentes = ler("nomesRecentes", []).filter(nomeValido);
 
   function entrar(n) {
-    const limpo = String(n || "").trim().toUpperCase().replace(/\s+/g, " ");
-    if (limpo.length < 2) return;
+    const limpo = normalizarNome(n);
+    const e = erroNome(limpo);
+    if (e) { setErro(e); return; }
     gravar("nomesRecentes", [limpo, ...recentes.filter((x) => x !== limpo)].slice(0, 6));
     aoEntrar(limpo);
   }
@@ -46,8 +49,9 @@ function Entrar({ aoEntrar }) {
         <img src="/logo-dellys.png" alt="Delly's Food Service" className="logo-login" />
           <div className="marca grande"><span>Controle de Entregas</span></div>
         <label>Quem está usando?
-          <input autoFocus placeholder="Digite seu nome" value={nome} onChange={(e) => setNome(e.target.value.toUpperCase())} />
+          <input autoFocus placeholder="Digite seu nome" value={nome} onChange={(e) => { setNome(e.target.value.toUpperCase()); setErro(""); }} />
         </label>
+        {erro && <div className="alerta erro login-erro">{erro}</div>}
         {recentes.length > 0 && (
           <div className="recentes">
             {recentes.map((r) => (
@@ -57,8 +61,8 @@ function Entrar({ aoEntrar }) {
             ))}
           </div>
         )}
-        <button className="btn primario" disabled={nome.trim().length < 2}>Entrar</button>
-        <small className="sub">Sem senha — o nome serve para mostrar quem está no site e quem fez cada alteração.</small>
+        <button className="btn primario" disabled={nome.trim().length < 3}>Entrar</button>
+        <small className="sub">Sem senha — use <b>seu nome</b> (ex.: Maria Souza). Ele aparece para todos e fica registrado em cada alteração. Códigos, números e nomes como "teste" não são aceitos.</small>
       </form>
     </div>
   );
@@ -67,8 +71,19 @@ function Entrar({ aoEntrar }) {
 export default function Casca({ children }) {
   const caminho = usePathname();
   const [nome, setNome] = useState(undefined); // undefined = ainda lendo
+  const [avisoNome, setAvisoNome] = useState("");
 
-  useEffect(() => { setNome(ler("usuarioSite", "") || ""); }, []);
+  useEffect(() => {
+    const salvo = ler("usuarioSite", "") || "";
+    // quem entrou antes com um "nome" que não identifica ninguém (TESTE, código, número...) precisa entrar de novo
+    if (salvo && !nomeValido(salvo)) {
+      gravar("usuarioSite", "");
+      setAvisoNome(`"${salvo}" não é aceito como nome. Entre de novo com seu nome.`);
+      setNome("");
+      return;
+    }
+    setNome(salvo);
+  }, []);
 
   if (!configurado()) {
     return (
@@ -87,7 +102,7 @@ export default function Casca({ children }) {
 
   if (nome === undefined) return <div className="carregando-tela">Carregando…</div>;
   if (nome) definirUsuario(nome); // o banco registra este nome no log de alterações
-  if (!nome) return <Entrar aoEntrar={(n) => { gravar("usuarioSite", n); setNome(n); }} />;
+  if (!nome) return <Entrar aviso={avisoNome} aoEntrar={(n) => { gravar("usuarioSite", n); setAvisoNome(""); setNome(n); }} />;
 
   function sair() {
     gravar("usuarioSite", "");
