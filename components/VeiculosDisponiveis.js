@@ -66,7 +66,7 @@ export default function VeiculosDisponiveis({ placasNaProgramacao, dataRef, cada
     <section className="cartao disponiveis">
       <div className="disp-cab">
         <div>
-          <b>🚚 Veículos disponíveis</b>
+          <b>Veículos disponíveis</b>
           <span className="sub"> · os mais usados nos últimos {JANELA} dias ({totalDias} dias com frete) que <b>não</b> estão nesta programação</span>
         </div>
         <div className="linha-acoes">
