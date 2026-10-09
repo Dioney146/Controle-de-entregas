@@ -13,6 +13,7 @@ import MotivoExclusao from "../../components/MotivoExclusao";
 import { useUsuario } from "../../components/Casca";
 import { fmtData, fmtDataHora, horaInput, horaParaTimestamp, num, moeda, normPlaca, corTrans, lerNumeroBR } from "../../lib/util";
 import MarcaManual from "../../components/MarcaManual";
+import MarcaTroca from "../../components/MarcaTroca";
 
 const ROTULO = { PROGRAMADO: "A sair", EM_ROTA: "Saiu", RETORNOU: "Retornou" };
 
@@ -102,7 +103,17 @@ export default function Frete() {
     const campos = { placa };
     if (v?.transportadora) campos.transportadora = v.transportadora;
     if (v?.tipo) campos.tipo = v.tipo;
-    await atualizar(l.id, campos);
+    // guarda a placa que veio da programação (só na 1ª troca); se voltar para ela, limpa o sinal
+    const original = l.placa_original || l.placa;
+    const marca = placa === original
+      ? { placa_original: null, placa_trocada_por: null, placa_trocada_em: null }
+      : { placa_original: original, placa_trocada_por: email || null, placa_trocada_em: new Date().toISOString() };
+    try {
+      await atualizar(l.id, { ...campos, ...marca });
+    } catch (e) {
+      if (!/placa_original|placa_trocada/i.test(e?.message || "")) throw e;
+      await atualizar(l.id, campos); // banco ainda sem o 12_placa_trocada.sql
+    }
   }
 
   async function definirSaida(l, hhmm) {
@@ -337,10 +348,10 @@ export default function Frete() {
               </thead>
               <tbody>
                 {exibidas.map((l) => (
-                  <tr key={l.id} data-id={l.id} className={`${l.status === "PROGRAMADO" ? "" : "l-verde"} ${l.arquivado ? "l-arquivado" : ""} ${verPendencias && !l.arquivado && pendencias(l).length ? "l-pendente" : ""} ${l.manual ? "l-manual" : ""}`}>
+                  <tr key={l.id} data-id={l.id} className={`${l.status === "PROGRAMADO" ? "" : "l-verde"} ${l.arquivado ? "l-arquivado" : ""} ${verPendencias && !l.arquivado && pendencias(l).length ? "l-pendente" : ""} ${l.manual ? "l-manual" : ""} ${l.placa_original && l.placa_original !== l.placa ? "l-trocada" : ""}`}>
                     <td className="c-data col-data">{fmtData(l.data).slice(0, 5)}</td>
                     <td className="col-zona"><CampoEditavel valor={l.zona} largura="6em" aoSalvar={(v) => atualizar(l.id, { zona: v })} /></td>
-                    <td className="placa"><div className="placa-box"><CampoEditavel valor={l.placa} largura="7em" lista="lista-placas" aoSalvar={(v) => trocarPlaca(l, v)} /><MarcaManual linha={l} /></div></td>
+                    <td className="placa"><div className="placa-box"><CampoEditavel valor={l.placa} largura="7em" lista="lista-placas" aoSalvar={(v) => trocarPlaca(l, v)} /><MarcaManual linha={l} /><MarcaTroca linha={l} /></div></td>
                     <td className={corTrans(l.transportadora)}><CampoEditavel valor={l.transportadora} largura="8em" lista="lista-trans" aoSalvar={(v) => atualizar(l.id, { transportadora: v })} /></td>
                     <td className="n"><CampoEditavel tipo="number" min={0} valor={l.entregas ?? ""} largura="4em" className="n" aoSalvar={(v) => atualizar(l.id, { entregas: v })} /></td>
                     <td className="n">{editaPesoValor(l)

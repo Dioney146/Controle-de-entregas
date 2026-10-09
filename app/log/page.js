@@ -19,7 +19,7 @@ const CAMPO = {
   registros: "Registros", motivo: "Motivo da exclusão",
 };
 const STATUS = { PROGRAMADO: "A sair", EM_ROTA: "Saiu", RETORNOU: "Retornou" };
-const ESCONDER = new Set(["arquivado_em", "arquivado_por", "ordem", "liberado_retorno_em", "liberado_retorno_por", "adicionado_por"]); // detalhes repetidos
+const ESCONDER = new Set(["arquivado_em", "arquivado_por", "ordem", "liberado_retorno_em", "liberado_retorno_por", "adicionado_por", "placa_original", "placa_trocada_por", "placa_trocada_em"]); // detalhes repetidos
 
 function valor(campo, v) {
   if (v === null || v === undefined || v === "") return "";

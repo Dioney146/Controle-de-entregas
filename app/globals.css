@@ -498,3 +498,10 @@ tr.l-manual > td.placa { box-shadow: inset 2px 0 0 #e8c46a; }
   .topo { flex-wrap: wrap; }
   .topo nav { order: 3; flex-basis: 100%; }
 }
+
+/* placa trocada no frete: mostra a placa antiga de forma discreta */
+.marca-troca {
+  display: inline-flex; align-items: center; margin-left: 4px; padding: 0 5px; border-radius: 4px;
+  font-size: 9.5px; font-weight: 600; line-height: 15px; white-space: nowrap; cursor: help;
+  color: #8a5a00; background: #fff4dc; border: 1px solid #f1d38f;
+}
