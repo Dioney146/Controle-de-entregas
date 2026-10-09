@@ -106,6 +106,18 @@ export default function Programacao() {
     l.tipoLinha === "carga" ? !excluidas[l.chave] : Boolean(incluidasSemCarga[l.chave]);
   const selecionadas = linhas.filter(vaiSair);
 
+  // veículos que vão para o frete, por transportadora (segue o "Sai?" marcado)
+  const porTrans = useMemo(() => {
+    const m = new Map();
+    for (const l of selecionadas) {
+      const t = String(l.transportadora || "").trim().toUpperCase() || "SEM CADASTRO";
+      const g = m.get(t) || { trans: t, qtd: 0, peso: 0, valor: 0 };
+      g.qtd += 1; g.peso += Number(l.peso) || 0; g.valor += Number(l.valor) || 0;
+      m.set(t, g);
+    }
+    const ordem = (g) => (g.trans.startsWith("HOK") ? 0 : 1);
+    return [...m.values()].sort((a, b) => ordem(a) - ordem(b) || b.qtd - a.qtd || a.trans.localeCompare(b.trans));
+  }, [selecionadas]);
   const datas = [...new Set(rotas.map((r) => r.data))].sort();
   const placasNaProgramacao = useMemo(() => new Set(rotas.map((r) => String(r.placa || "").trim().toUpperCase().replace(/[\s-]/g, ""))), [rotas]);
   const importadoEm = rotas.reduce((m, r) => (r.created_at > m ? r.created_at : m), "");
@@ -272,6 +284,18 @@ export default function Programacao() {
           <small>livre {pct(1 - ocup)}</small>
         </div>
       </section>
+
+      {porTrans.length > 0 && (
+        <section className="por-trans">
+          <span className="por-trans-tit">🚚 Indo para o frete <b>{selecionadas.length}</b></span>
+          {porTrans.map((g) => (
+            <span key={g.trans} className={`chip-trans ${corTrans(g.trans)}`}
+              title={`${g.trans}: ${g.qtd} veículo(s) · ${num(g.peso)} kg · ${moeda(g.valor)}`}>
+              {g.trans} <b>{g.qtd}</b>
+            </span>
+          ))}
+        </section>
+      )}
 
       {naoCadastradas.length > 0 && (
         <div className="alerta aviso">

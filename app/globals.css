@@ -462,3 +462,19 @@ tr.l-manual > td.placa { box-shadow: inset 2px 0 0 #e8c46a; }
 .logo-login { display: block; width: 170px; height: auto; margin: 4px auto 2px; }
 .marca.grande { display: block; text-align: center; }
 .marca.grande span { margin: 0; font-size: 1.05rem; font-weight: 600; }
+
+/* Programação: veículos indo para o frete, por transportadora */
+.por-trans { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 0 0 10px; }
+.por-trans-tit { font-size: .78rem; color: var(--suave); margin-right: 4px; text-transform: uppercase; letter-spacing: .03em; }
+.por-trans-tit b { color: var(--texto, #1d2733); font-size: .95rem; margin-left: 2px; }
+.chip-trans {
+  display: inline-flex; align-items: center; gap: 7px; padding: 3px 4px 3px 10px; border-radius: 999px;
+  font-size: .78rem; font-weight: 600; border: 1px solid rgba(0,0,0,.12); background: #fff; color: #1d2733; cursor: default;
+}
+.chip-trans b { min-width: 22px; text-align: center; padding: 1px 7px; border-radius: 999px; background: rgba(0,0,0,.12); font-size: .82rem; }
+.chip-trans.ct-mamba  { background: #7fcf86; color: #0f3d14; }
+.chip-trans.ct-hok    { background: #cfe6fb; color: #0b3a66; }
+.chip-trans.ct-cmg    { background: #e3e6ea; color: #333d48; }
+.chip-trans.ct-ralph  { background: #fdd7b0; color: #6b3500; }
+.chip-trans.ct-amorim { background: #1f3f74; color: #fff; }
+.chip-trans.ct-amorim b { background: rgba(255,255,255,.22); }
