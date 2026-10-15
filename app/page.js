@@ -8,11 +8,13 @@ import { interpretar, textoParaLinhas } from "../lib/roadnet";
 import { useUsuario } from "../components/Casca";
 import { guardarDataTrabalho, useTempoReal } from "../lib/hooks";
 import { useColunas } from "../lib/colunas";
-import { desfazerFrete } from "../lib/frete";
+import { desfazerFrete, sincronizarFrete, resumoSincronizacao } from "../lib/frete";
 import VeiculosDisponiveis from "../components/VeiculosDisponiveis";
 import {
   hojeISO, somarDias, fmtData, num, moeda, pct, zonaDaDescricao, entregadorDoRoadnet, corTrans,
 } from "../lib/util";
+
+const normP = (p) => String(p || "").trim().toUpperCase().replace(/[\s-]/g, "");
 
 export default function Programacao() {
   const router = useRouter();
@@ -49,7 +51,7 @@ export default function Programacao() {
     const r = (todas || []).filter((x) => x.created_at === ultimo);
     const datas = [...new Set((r || []).map((x) => x.data))];
     const s = datas.length
-      ? await sb().from("saidas").select("id,placa,status,data").in("data", datas)
+      ? await sb().from("saidas").select("*").in("data", datas)
       : { data: [] };
     setRotas(r || []);
     setVeiculos(v || []);
@@ -123,6 +125,13 @@ export default function Programacao() {
   const importadoEm = rotas.reduce((m, r) => (r.created_at > m ? r.created_at : m), "");
   const importadoPor = rotas.find((r) => r.created_at === importadoEm)?.created_by || "";
   const qtdProgramado = saidasDia.filter((s) => s.status === "PROGRAMADO").length;
+  const freteExiste = saidasDia.length > 0;
+  // placas que já estão no frete (pela placa atual ou pela placa antes de ser trocada)
+  const noFrete = useMemo(() => {
+    const m = new Set();
+    for (const x of saidasDia) { m.add(`${x.data}|${normP(x.placa)}`); if (x.placa_original) m.add(`${x.data}|${normP(x.placa_original)}`); }
+    return m;
+  }, [saidasDia]);
   const qtdConfirmado = saidasDia.filter((s) => s.status !== "PROGRAMADO").length;
 
   // ---------- importação ----------
@@ -160,22 +169,44 @@ export default function Programacao() {
     // limpeza: apaga qualquer coisa mais antiga que tenha sobrado
     const marca = ins.data?.[0]?.created_at;
     if (marca) await sb().from("programacao").delete().lt("created_at", marca);
+    // frete dessa data já gerado? então a programação nova entra nele na hora (só quem tem carga)
+    let extra = "";
+    try {
+      const r = await sincronizarFrete(dataImport, linhasNovas.filter((x) => (x.paradas || 0) > 0).map(itemDaRota), opcoesSinc());
+      if (r) extra = " " + resumoSincronizacao(dataImport, r);
+    } catch (e) { extra = ` Atenção: não consegui atualizar o frete (${e.message}).`; }
     setSalvando(false);
-    setMsg({ tipo: "ok", txt: `Programação importada: ${previa.rotas.length} rotas (saída ${fmtData(dataImport)}).` });
+    setMsg({ tipo: "ok", txt: `Programação importada: ${previa.rotas.length} rotas (saída ${fmtData(dataImport)}).${extra}` });
     setTexto(""); setPrevia(null); setAbrirImport(false);
     carregar();
   }
 
-  // ---------- gerar frete ----------
+  // ---------- gerar / atualizar frete ----------
+  const itemDaRota = (r) => ({ placa: r.placa, paradas: r.paradas, peso: r.peso, valor: r.valor, destino: r.descricao || r.destino, tipo: r.tipo_equip || r.tipo });
+  const opcoesSinc = () => ({ mapaVeic, zonaDe: zonaDaDescricao, email });
+
   async function gerarFrete() {
     if (!selecionadas.length) return;
     const porData = {};
     selecionadas.forEach((l) => { (porData[l.data] = porData[l.data] || []).push(l); });
     const datasFrete = Object.keys(porData).sort();
-    const progExistente = saidasDia.filter((x) => x.status === "PROGRAMADO" && porData[x.data]).length;
-    if (progExistente && !confirm(`Já existe frete para ${datasFrete.map(fmtData).join(", ")} com ${progExistente} veículo(s) ainda não saídos. Refazer o frete? (motoristas digitados nesses veículos serão perdidos)`)) return;
 
-    for (const d of datasFrete) {
+    // data que JÁ tem frete: não refaz (não perde motoristas nem saídas) — só junta o que mudou
+    const avisos = [];
+    for (const d of datasFrete.filter((d) => saidasDia.some((x) => x.data === d))) {
+      try {
+        const r = await sincronizarFrete(d, porData[d].map((l) => ({ ...itemDaRota(l.rota), tipo: l.tipo })), opcoesSinc());
+        avisos.push(resumoSincronizacao(d, r));
+      } catch (e) { return setMsg({ tipo: "erro", txt: e.message }); }
+      delete porData[d];
+    }
+    if (avisos.length && !Object.keys(porData).length) {
+      setMsg({ tipo: "ok", txt: avisos.join(" ") });
+      await carregar();
+      return;
+    }
+
+    for (const d of Object.keys(porData).sort()) {
       const jaSairam = new Set(saidasDia.filter((x) => x.data === d && x.status !== "PROGRAMADO").map((x) => x.placa));
       const novas = porData[d]
         .filter((l) => !jaSairam.has(l.placa))
@@ -197,8 +228,6 @@ export default function Programacao() {
             ordem: i,
           };
         });
-      const del = await sb().from("saidas").delete().eq("data", d).eq("status", "PROGRAMADO");
-      if (del.error) return setMsg({ tipo: "erro", txt: del.error.message });
       if (novas.length) {
         const ins = await sb().from("saidas").insert(novas);
         if (ins.error) return setMsg({ tipo: "erro", txt: ins.error.message });
@@ -332,7 +361,7 @@ export default function Programacao() {
             <button className="btn link" title="Volta as colunas para o auto ajuste" onClick={ajustarColunas}>↔ ajustar colunas</button>
             <label className="check"><input type="checkbox" checked={mostrarSemCarga} onChange={(e) => setMostrarSemCarga(e.target.checked)} /> mostrar sem carga</label>
             <button className="btn primario" disabled={!selecionadas.length} onClick={gerarFrete}>
-              Gerar frete com {selecionadas.length} veículo(s) →
+              {freteExiste ? `Atualizar frete (${selecionadas.length} veículos) →` : `Gerar frete com ${selecionadas.length} veículo(s) →`}
             </button>
           </div>
         </div>
@@ -360,7 +389,7 @@ export default function Programacao() {
                       </td>
                       <td className="c-data">{fmtData(l.data).slice(0, 5)}</td>
                       <td className={corTrans(l.transportadora)}>{l.transportadora || <span className="etiqueta aviso">sem cadastro</span>}</td>
-                      <td className="placa">{l.placa}</td>
+                      <td className="placa">{l.placa}{freteExiste && !noFrete.has(`${l.data}|${normP(l.placa)}`) && vaiSair(l) && <span className="etq-novo" title="Ainda não está no frete — entra ao clicar em Atualizar frete">novo</span>}</td>
                       <td>{l.tipo}</td>
                       <td className="n">{l.paradas ?? ""}</td>
                       <td className="n">{num(l.peso)}</td>
