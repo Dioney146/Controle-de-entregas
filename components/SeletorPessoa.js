@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { sb } from "../lib/supabase";
+import { ehDiarista } from "../lib/cadastro";
 
 // Lista padronizada de motoristas/entregadores (tabela "pessoas"), compartilhada pela página
 export function usePessoas() {
@@ -16,7 +17,9 @@ export function usePessoas() {
   async function cadastrar(nome, funcao) {
     const n = nome.trim().toUpperCase().replace(/\s+/g, " ");
     if (!n) return null;
-    const { data, error } = await sb().from("pessoas").insert({ nome: n, funcao }).select().single();
+    // "DG" no nome = diarista (se o banco ainda não tiver a coluna, grava sem ela)
+    let { data, error } = await sb().from("pessoas").insert({ nome: n, funcao, vinculo: ehDiarista(n) ? "DIARISTA" : "FIXO" }).select().single();
+    if (error && /vinculo/i.test(error.message || "")) ({ data, error } = await sb().from("pessoas").insert({ nome: n, funcao }).select().single());
     if (error && error.code !== "23505") { alert(error.message); return null; }
     await carregar();
     return n;
@@ -146,6 +149,7 @@ function Painel({ valor, pessoas, funcao, multiplo, pos, fechar, salvar, cadastr
             >
               {multiplo && <input type="checkbox" readOnly checked={sel} />}
               <span>{p.nome}</span>
+              {(p.vinculo === "DIARISTA" || (!p.vinculo && ehDiarista(p.nome))) && <span className="pp-dg" title="Diarista">DG</span>}
               {!daFuncao(p) && <small>{p.funcao.toLowerCase()}</small>}
             </div>
           );
