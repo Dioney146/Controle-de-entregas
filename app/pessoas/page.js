@@ -7,6 +7,7 @@ import { useColunas } from "../../lib/colunas";
 import { useTempoReal } from "../../lib/hooks";
 import { useFiltros, ThFiltro } from "../../components/FiltroColuna";
 import { ligarPessoas, ehDiarista, normNome, GM } from "../../lib/cadastro";
+import PadronizarNomes from "../../components/PadronizarNomes";
 
 // Cadastro padronizado de motoristas e entregadores.
 // É dessa lista que saem as opções nas colunas Motorista / Entregadores do Frete.
@@ -56,6 +57,8 @@ export default function Pessoas() {
   const [busca, setBusca] = useState("");
   const [novo, setNovo] = useState({ nome: "", funcao: "AMBOS" });
   const [marcados, setMarcados] = useState(new Set());
+  const [padronizar, setPadronizar] = useState(false);
+  const [msg, setMsg] = useState("");
   const f = useFiltros(COLUNAS);
   const fc = useFiltros(COLUNAS_CAD);
 
@@ -173,6 +176,18 @@ export default function Pessoas() {
         ))}
       </div>
 
+      {msg && <div className="alerta ok" onClick={() => setMsg("")}>{msg}</div>}
+      {padronizar && (
+        <PadronizarNomes
+          pessoas={lista}
+          cadastro={cadastro}
+          usos={usos}
+          temColunas={!lista.length || "vinculo" in lista[0]}
+          aoFechar={() => setPadronizar(false)}
+          aoConcluir={(t) => { setPadronizar(false); setMsg(t); carregar(); }}
+        />
+      )}
+
       {semTabela && (
         <div className="alerta aviso">Para ver quem está apto no GreenMile, rode o arquivo <b>13_cadastro_gm.sql</b> no Supabase (SQL Editor › Run).</div>
       )}
@@ -216,6 +231,11 @@ export default function Pessoas() {
             {(aba === "CADASTRO" ? fc.ativos : f.ativos) > 0 && <button className="btn link" onClick={() => (aba === "CADASTRO" ? fc : f).limparTudo()}>✕ limpar filtros</button>}
           </div>
           <div className="linha-acoes">
+            {aba !== "CADASTRO" && (
+              <button className="btn btn-pad" onClick={() => setPadronizar(true)} disabled={carregando} title="Junta nomes repetidos e completa com o nome do Winthor / RoadNet (mostra tudo antes de gravar)">
+                Padronizar nomes
+              </button>
+            )}
             <button className="btn link" onClick={ajustarColunas}>↔ ajustar colunas</button>
             <span className="sub">
               {aba === "CADASTRO"
