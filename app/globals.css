@@ -551,3 +551,25 @@ tr.l-manual > td.placa { box-shadow: inset 2px 0 0 #e8c46a; }
 .pad-tag.ok { color: #146c34; background: #dcf5e4; border-color: #a6dfb8; }
 .pad-tag.dg { color: #7a4b00; background: #fff1d6; border-color: #f0cf8a; }
 .pad-tag.pn { color: #1e4f91; background: #e3edfb; border-color: #b5cdf0; }
+
+/* Veículos: organizado por transportadora */
+.veic-trans { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 10px; }
+.veic-trans .chip-trans { font: inherit; font-size: .78rem; font-weight: 600; cursor: pointer; }
+.veic-trans .chip-trans.todos { background: #13263b; color: #fff; }
+.veic-trans .chip-trans.todos b { background: rgba(255,255,255,.2); }
+.veic-trans .chip-trans.sel { outline: 2px solid #13263b; outline-offset: 1px; }
+.veic-trans .chip-trans.todos.sel { outline-color: #2e9d55; }
+.veic-novo { flex-wrap: wrap; }
+table.veic tr.veic-grupo td { background: #f3f6fa; border-top: 2px solid #d5dde8; padding: 7px 10px; font-size: .8rem; }
+table.veic .veic-grupo-nome { display: inline-block; padding: 1px 10px; border-radius: 999px; font-weight: 800; font-size: .78rem; }
+table.veic .veic-grupo-nome.ct-mamba  { background: #7fcf86; color: #0f3d14; }
+table.veic .veic-grupo-nome.ct-hok    { background: #cfe6fb; color: #0b3a66; }
+table.veic .veic-grupo-nome.ct-cmg    { background: #e3e6ea; color: #333d48; }
+table.veic .veic-grupo-nome.ct-jb     { background: #fff; color: #1d2733; border: 1px solid #ccd3dd; }
+table.veic .veic-grupo-nome.ct-ralph  { background: #fdd7b0; color: #6b3500; }
+table.veic .veic-grupo-nome.ct-amorim { background: #1f3f74; color: #fff; }
+table.veic td.veic-invalido { box-shadow: inset 0 0 0 2px #f6b893; }
+select.gm-sel { font-weight: 700; border-radius: 999px; padding: 1px 8px; border: 1px solid transparent; }
+select.gm-sel.gm-ok { background: #dcf5e4; color: #146c34; border-color: #a6dfb8; }
+select.gm-sel.gm-aviso { background: #fff2cc; color: #8a5a00; border-color: #f1d38f; }
+select.gm-sel.gm-pend { background: #fde3d3; color: #9a3412; border-color: #f6b893; }
