@@ -607,3 +607,8 @@ table.ag td.ag-ent .ag-data { margin-left: 4px; }
 .ag-lote .ag-data { width: 9em; }
 @media (max-width: 900px) { .ag-funil { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 table.ag .ag-ent-data { margin-left: 5px; color: #146c34; font-weight: 700; }
+.ag-etapa em.ag-valor { color: #13263b; font-weight: 700; font-size: .82rem; }
+.ag-etapa em small { font-weight: 600; color: var(--suave); }
+.ag-etapa b small { font-size: .72rem; }
+table.ag td.ag-mun { max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+table.ag tfoot td { font-weight: 800; background: #f3f6fa; border-top: 2px solid #d5dde8; }

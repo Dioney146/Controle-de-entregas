@@ -21,7 +21,7 @@ const COLUNAS = {
   instrucoes: { valor: (a) => a.instrucoes },
   valor: { valor: (a) => a.valor, numero: true },
   peso: { valor: (a) => a.peso, numero: true },
-  saida: { valor: (a) => a.data_saida || "" },
+  municipio: { valor: (a) => a.municipio || "" },
   agendado: { valor: (a) => a.agendado_para || "" },
   nf: { valor: (a) => a.nota_fiscal },
 };
@@ -156,11 +156,12 @@ export default function Agendamentos() {
 
   // ---------- números ----------
   const b = busca.trim().toUpperCase();
-  const base = lista.filter((a) => !b || [a.cliente, a.pedido, a.instrucoes, a.nota_fiscal, a.cod_rota].some((x) => String(x || "").toUpperCase().includes(b)));
+  const base = lista.filter((a) => !b || [a.cliente, a.pedido, a.instrucoes, a.nota_fiscal, a.cod_rota, a.municipio].some((x) => String(x || "").toUpperCase().includes(b)));
   const porEtapa = base.filter((a) => !filtroEtapa || etapa(a) === filtroEtapa);
   const visiveis = f.aplicar(porEtapa);
   const [refTabela, ajustarColunas] = useColunas("agendamentos", `${carregando}-${visiveis.length}`);
 
+  const somar = (l) => ({ valor: l.reduce((s, a) => s + (Number(a.valor) || 0), 0), peso: l.reduce((s, a) => s + (Number(a.peso) || 0), 0) });
   // funil: quem chegou pelo menos até a etapa
   const chegou = (ord) => base.filter((a) => ETAPAS[etapa(a)].ordem >= ord);
   const funil = [
@@ -168,8 +169,11 @@ export default function Agendamentos() {
     { k: "AGENDADO", rot: "Agendados", lista: chegou(1) },
     { k: "FATURADO", rot: "Faturados", lista: chegou(2) },
     { k: "ENTREGUE", rot: "Entregues", lista: chegou(3) },
-  ].map((x) => ({ ...x, qtd: x.lista.length, valor: x.lista.reduce((s, a) => s + (Number(a.valor) || 0), 0) }));
+  ].map((x) => ({ ...x, qtd: x.lista.length, ...somar(x.lista) }));
   const pct = (n) => (base.length ? Math.round((n / base.length) * 100) : 0);
+  const pctValor = (v) => (funil[0].valor ? ((v / funil[0].valor) * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 }) : "0");
+  const naoFaturado = somar(base.filter((a) => ETAPAS[etapa(a)].ordem < 2));
+  const totVis = somar(visiveis);
   const clientes = new Set(base.map((a) => a.cliente)).size;
 
   const todosMarcados = visiveis.length > 0 && visiveis.every((a) => marcados.has(a.id));
@@ -237,15 +241,17 @@ export default function Agendamentos() {
             title={i ? `${pct(x.qtd)}% dos montados chegaram até aqui` : "Pedidos montados no período"}
             onClick={() => setFiltroEtapa(filtroEtapa === x.k ? "" : x.k)}>
             <span>{x.rot}</span>
-            <b>{x.qtd}{i > 0 && <small> {pct(x.qtd)}%</small>}</b>
-            <em>{moeda(x.valor)}</em>
+            <b>{x.qtd} <small>pedido(s){i > 0 ? ` · ${pct(x.qtd)}%` : ""}</small></b>
+            <em className="ag-valor">{moeda(x.valor)}{i > 0 && <small> {pctValor(x.valor)}% do valor</small>}</em>
+            <em>{num(x.peso)} kg</em>
             {i > 0 && <i style={{ width: `${pct(x.qtd)}%` }} />}
           </button>
         ))}
         <div className="ag-etapa ag-falta">
           <span>Falta</span>
-          <b>{base.length - chegou(1).length} <small>agendar</small></b>
-          <em>{chegou(1).length - chegou(2).length} faturar · {chegou(2).length - chegou(3).length} entregar</em>
+          <b>{base.length - chegou(1).length} <small>agendar · {chegou(1).length - chegou(2).length} faturar · {chegou(2).length - chegou(3).length} entregar</small></b>
+          <em className="ag-valor">{moeda(naoFaturado.valor)} <small>a faturar</small></em>
+          <em>{num(naoFaturado.peso)} kg a faturar</em>
         </div>
       </section>
 
@@ -286,7 +292,7 @@ export default function Agendamentos() {
                   <ThFiltro f={f} col="instrucoes" linhas={porEtapa}>Instruções</ThFiltro>
                   <ThFiltro f={f} col="valor" linhas={porEtapa} className="n">Valor</ThFiltro>
                   <ThFiltro f={f} col="peso" linhas={porEtapa} className="n">KG</ThFiltro>
-                  <ThFiltro f={f} col="saida" linhas={porEtapa}>Saída</ThFiltro>
+                  <ThFiltro f={f} col="municipio" linhas={porEtapa}>Município (bairro)</ThFiltro>
                   <ThFiltro f={f} col="agendado" linhas={porEtapa}>Agendado para</ThFiltro>
                   <th className="c">Faturado</th>
                   <ThFiltro f={f} col="nf" linhas={porEtapa}>NF</ThFiltro>
@@ -307,17 +313,17 @@ export default function Agendamentos() {
                       <td className="ag-instr" title={a.instrucoes}>{a.instrucoes}</td>
                       <td className="n">{moeda(a.valor)}</td>
                       <td className="n">{num(a.peso)}</td>
-                      <td title={a.sessao}>{a.data_saida ? fmtData(a.data_saida).slice(0, 5) : "—"}</td>
+                      <td className="ag-mun" title={a.municipio}>{a.municipio || "—"}</td>
                       <td>
                         <input type="date" className="campo-ed ag-data" value={a.agendado_para || ""}
                           onChange={(e) => atualizar([a.id], e.target.value ? { agendado_para: e.target.value, agendado_por: email || null } : camposEtapa("DESFAZER_AGENDADO"))} />
                       </td>
                       <td className="c" title={a.faturado_em ? `por ${a.faturado_por || "?"}` : ""}>
-                        <input type="checkbox" checked={a.faturado} onChange={(e) => atualizar([a.id], camposEtapa(e.target.checked ? "FATURADO" : "DESFAZER_FATURADO"))} />
+                        <input type="checkbox" checked={!!a.faturado} onChange={(e) => atualizar([a.id], camposEtapa(e.target.checked ? "FATURADO" : "DESFAZER_FATURADO"))} />
                       </td>
                       <td><CampoEditavel valor={a.nota_fiscal} largura="7em" placeholder="nº NF" aoSalvar={(v) => atualizar([a.id], v ? { nota_fiscal: v, ...(a.faturado ? {} : camposEtapa("FATURADO")) } : { nota_fiscal: "" })} /></td>
                       <td className="c ag-ent">
-                        <input type="checkbox" checked={a.entregue} onChange={(e) => atualizar([a.id], camposEtapa(e.target.checked ? "ENTREGUE" : "DESFAZER_ENTREGUE"))} />
+                        <input type="checkbox" checked={!!a.entregue} onChange={(e) => atualizar([a.id], camposEtapa(e.target.checked ? "ENTREGUE" : "DESFAZER_ENTREGUE"))} />
                         {a.entregue && <small className="ag-ent-data" title={`Entregue em ${fmtData(a.entregue_em)}${a.entregue_por ? ` · marcado por ${a.entregue_por}` : ""}`}>{fmtData(a.entregue_em).slice(0, 5)}</small>}
                       </td>
                       <td><CampoEditavel valor={a.obs} largura="10em" placeholder="obs" aoSalvar={(v) => atualizar([a.id], { obs: v })} /></td>
@@ -325,6 +331,14 @@ export default function Agendamentos() {
                   );
                 })}
               </tbody>
+              <tfoot>
+                <tr>
+                  <td colSpan={6}>TOTAL · {visiveis.length} pedido(s){visiveis.length !== base.length ? ` (de ${base.length})` : ""}</td>
+                  <td className="n">{moeda(totVis.valor)}</td>
+                  <td className="n">{num(totVis.peso)}</td>
+                  <td colSpan={6}></td>
+                </tr>
+              </tfoot>
             </table>
           </div>
         )}
