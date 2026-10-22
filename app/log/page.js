@@ -9,7 +9,7 @@ import { fmtDataHora, baixarCSV } from "../../lib/util";
 
 // Log de alterações: quem mudou o quê, quando, de/para (gravado pelo próprio banco)
 
-const TELA = { saidas: "Frete / Retorno", veiculos: "Veículos", pessoas: "Motoristas", programacao: "Programação" };
+const TELA = { saidas: "Frete / Retorno", veiculos: "Veículos", pessoas: "Motoristas", programacao: "Programação", agendamentos: "Agendamentos" };
 const CAMPO = {
   motorista: "Motorista", entregador: "Entregadores", hora_saida: "Saída", status: "Status",
   cancelados: "Cancelados", reentregas: "Reentregas", pendentes: "Pendentes", celular_devolvido: "Celular devolvido",
