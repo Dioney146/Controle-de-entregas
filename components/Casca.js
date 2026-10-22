@@ -18,6 +18,7 @@ const MENU = [
   { href: "/frete", rotulo: "Frete / Saídas" },
   { href: "/retorno", rotulo: "Retorno" },
   { href: "/historico", rotulo: "Histórico" },
+  { href: "/agendamentos", rotulo: "Agendamentos" },
   { href: "/veiculos", rotulo: "Veículos" },
   { href: "/pessoas", rotulo: "Motoristas / Entregadores" },
   { href: "/log", rotulo: "Log" },
