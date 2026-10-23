@@ -19,6 +19,7 @@ const MENU = [
   { href: "/retorno", rotulo: "Retorno" },
   { href: "/historico", rotulo: "Histórico" },
   { href: "/agendamentos", rotulo: "Agendamentos" },
+  { href: "/backlog", rotulo: "Backlog" },
   { href: "/veiculos", rotulo: "Veículos" },
   { href: "/pessoas", rotulo: "Motoristas / Entregadores" },
   { href: "/log", rotulo: "Log" },
