@@ -43,7 +43,7 @@ export default function Vigia() {
     const canal = sb().channel("vigia-" + Math.random().toString(36).slice(2))
       .on("postgres_changes", { event: "*", schema: "public", table: "saidas" }, aviso)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "log_alteracoes" }, aviso)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "backlog_importacoes" }, aviso)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "backlog_colagens" }, aviso)
       .subscribe();
 
     // ao voltar para a aba, recarrega tudo
