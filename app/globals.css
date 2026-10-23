@@ -614,32 +614,28 @@ table.ag td.ag-mun { max-width: 170px; overflow: hidden; text-overflow: ellipsis
 table.ag tfoot td { font-weight: 800; background: #f3f6fa; border-top: 2px solid #d5dde8; }
 
 /* ---------- Backlog ---------- */
-.bk-kpis .ag-etapa.bk-kpi-m { border-left-color: #6d28d9; }
-.bk-kpis .ag-etapa.bk-kpi-l { border-left-color: #0ea5e9; }
-.bk-kpis .ag-etapa.bk-kpi-idade { cursor: default; border-left-color: #f59e0b; }
-.bk-faixas { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
-.bk-faixas-tit { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; margin-bottom: 4px; }
-.bk-faixa { display: grid; grid-template-columns: 120px minmax(0, 1fr) 150px 220px; align-items: center; gap: 10px; border: 1px solid transparent; background: none; padding: 3px 6px; border-radius: 6px; font: inherit; cursor: pointer; text-align: left; }
-.bk-faixa:hover { background: #f4f7fa; }
-.bk-faixa.sel { border-color: #13263b; background: #f4f7fa; }
-.bk-faixa-rot { font-weight: 600; font-size: .82rem; }
-.bk-barra { display: flex; height: 16px; background: #eef1f5; border-radius: 4px; overflow: hidden; }
-.bk-barra i { display: block; height: 100%; }
-.bk-barra i.l { opacity: .45; }
-.bk-faixa-num { font-size: .82rem; }
-.bk-faixa-val { font-size: .76rem; color: var(--suave); text-align: right; }
-.bk-grupos { margin-bottom: 10px; }
-.bk-grupos-rol { max-height: 300px; overflow-y: auto; }
-table.bk-agr td.n, table.bk-agr th.n, table.bk-hist td.n, table.bk-hist th.n { text-align: right; }
-table.bk-agr tbody tr:hover { background: #f4f7fa; }
-.bk-pos { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: .72rem; font-weight: 700; border: 1px solid; }
+.bk-caixas { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 10px; }
+.bk-caixa { display: flex; flex-direction: column; gap: 6px; border-left: 4px solid #22a35a; }
+.bk-caixa.vazia { border-left-color: #f59e0b; }
+.bk-caixa-topo { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.bk-caixa textarea.colar { width: 100%; font-family: ui-monospace, monospace; font-size: .74rem; }
+.bk-kpis .ag-etapa.bk-kpi-MONTADO { border-left-color: #6d28d9; }
+.bk-kpis .ag-etapa.bk-kpi-NAO_MONTADO { border-left-color: #0ea5e9; }
+.bk-kpis .ag-etapa.bk-kpi-BACKLOG { border-left-color: #b91c1c; background: #fff6f6; }
+.bk-kpis .ag-etapa.bk-kpi-BACKLOG b { color: #b91c1c; }
+.bk-cars { margin-bottom: 10px; border-top: 3px solid #b91c1c; }
+.bk-cars .tabela-rolagem { max-height: 320px; overflow-y: auto; }
+table.bk-agr td.n, table.bk-agr th.n { text-align: right; }
+table.bk-agr tbody tr:hover, table.bk-agr tbody tr.sel { background: #fdeeee; }
+.bk-sairam { margin-bottom: 10px; }
+.bk-lista-peds { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; max-height: 140px; overflow-y: auto; }
+.bk-lista-peds span { font-family: ui-monospace, monospace; font-size: .74rem; padding: 1px 6px; border-radius: 4px; background: #e9f6ee; color: #146c34; }
+.bk-pos { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: .72rem; font-weight: 700; border: 1px solid; white-space: nowrap; }
 .bk-pos.bk-m { background: #efe7fd; color: #5b21b6; border-color: #d4c2f6; }
 .bk-pos.bk-l { background: #e2f3fc; color: #075985; border-color: #b4dff3; }
+.bk-pos.bk-backlog { background: #fde2e2; color: #991b1b; border-color: #f5b5b5; }
 .bk-dias { display: inline-block; min-width: 26px; text-align: center; padding: 1px 6px; border-radius: 6px; color: #fff; font-weight: 700; font-size: .78rem; background: #98a2b3; }
 table.bk td.ag-ped { font-family: ui-monospace, monospace; font-size: .78rem; }
 table.bk td.ag-cli { max-width: 230px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
 table.bk td.n, table.bk th.n { text-align: right; }
-@media (max-width: 900px) {
-  .bk-faixa { grid-template-columns: 90px minmax(0, 1fr) 110px; }
-  .bk-faixa-val { display: none; }
-}
+@media (max-width: 900px) { .bk-caixas { grid-template-columns: 1fr; } }
