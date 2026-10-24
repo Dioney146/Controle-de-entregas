@@ -624,7 +624,9 @@ table.ag tfoot td { font-weight: 800; background: #f3f6fa; border-top: 2px solid
 .bk-kpis .ag-etapa.bk-kpi-BACKLOG { border-left-color: #b91c1c; background: #fff6f6; }
 .bk-kpis .ag-etapa.bk-kpi-BACKLOG b { color: #b91c1c; }
 .bk-cars { margin-bottom: 10px; border-top: 3px solid #b91c1c; }
-.bk-cars .tabela-rolagem { max-height: 320px; overflow-y: auto; }
+.bk-kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.bk-caixa-ok { font-size: .9rem; }
+table.bk-agr tr.bk-sub td { background: #fafbfc; font-size: .8rem; color: #445; }
 table.bk-agr td.n, table.bk-agr th.n { text-align: right; }
 table.bk-agr tbody tr:hover, table.bk-agr tbody tr.sel { background: #fdeeee; }
 .bk-sairam { margin-bottom: 10px; }
