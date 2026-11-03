@@ -706,3 +706,8 @@ table.na td.ag-cli { max-width: 260px; overflow: hidden; text-overflow: ellipsis
 .na-chip-placa:hover, .na-chip-placa.sel { border-color: #13263b; background: #e8edf3; }
 .btn.link.perigo { color: var(--vermelho); margin-left: 8px; }
 @media (max-width: 900px) { .na-kpis { grid-template-columns: 1fr; } }
+.na-road { font-size: .84rem; padding: 6px 10px; border-radius: 6px; background: #f4f7fa; }
+.na-road.na-road-achou { background: #e9f6ee; }
+.na-road.na-road-nao { background: #fff6ea; }
+.na-previa { max-height: 260px; overflow-y: auto; border: 1px solid var(--borda); border-radius: 6px; }
+table.na tr.na-repetida td { color: #98a2b3; text-decoration: line-through; }

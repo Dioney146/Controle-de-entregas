@@ -5,7 +5,7 @@ import { sb, buscarTudo } from "../../lib/supabase";
 import { useTempoReal } from "../../lib/hooks";
 import { useUsuario } from "../../components/Casca";
 import { hojeISO, somarDias, fmtData, fmtDataHora, num, moeda, baixarCSV, normPlaca, lerNumeroBR } from "../../lib/util";
-import { lerColagem, nomesDoFrete, somar, PLACAS_FICTICIAS, CLIENTE_PADRAO } from "../../lib/notasAgendadas";
+import { lerColagem, nomesDoFrete, somar, buscarNaRoad, completarComRoad, PLACAS_FICTICIAS, CLIENTE_PADRAO } from "../../lib/notasAgendadas";
 
 // Notas agendadas: notas fiscais de agendamento (ex.: J A GOMES) faturadas em placa fictícia.
 // 1) Adiciona as notas (digitando ou colando) -> ficam PENDENTES.
@@ -15,7 +15,7 @@ import { lerColagem, nomesDoFrete, somar, PLACAS_FICTICIAS, CLIENTE_PADRAO } fro
 const dm = (iso) => (iso ? fmtData(iso).slice(0, 5) : "—");
 const diasDesde = (iso, hoje) => (iso ? Math.max(0, Math.round((Date.parse(hoje + "T12:00:00Z") - Date.parse(iso + "T12:00:00Z")) / 86400000)) : null);
 const br = (n) => (n == null ? "" : String(Math.round(n * 100) / 100).replace(".", ","));
-const VAZIA = { numnota: "", numped: "", valor: "", peso: "", carregamento: "", obs: "" };
+const VAZIA = { numnota: "", numped: "", valor: "", peso: "", carregamento: "", obs: "", cliente: "", codcli: "", destino: "", placa_road: "" };
 
 export default function NotasAgendadas() {
   const { email } = useUsuario();
@@ -84,13 +84,64 @@ function Adicionar({ email, hoje, existentes, clientes, aoAdicionar, aoErro }) {
   const [placaF, setPlacaF] = useState(PLACAS_FICTICIAS[0]);
   const [destino, setDestino] = useState("AGEN JA");
   const [nota, setNota] = useState(VAZIA);
+  const [busca, setBusca] = useState({ nf: "", estado: "" }); // estado: buscando | achou | nao | erro
   const [texto, setTexto] = useState("");
+  const [road, setRoad] = useState({ chave: "", achadas: {}, faltando: [], estado: "" });
   const [salvando, setSalvando] = useState(false);
 
   const padrao = { cliente: cliente.toUpperCase().trim(), placa_ficticia: normPlaca(placaF) || PLACAS_FICTICIAS[0], destino: destino.toUpperCase().trim() };
   const leitura = useMemo(() => (texto.trim() ? lerColagem(texto, padrao) : null), [texto, cliente, placaF, destino]);
-  const novas = leitura?.notas.filter((n) => !existentes.has(n.numnota)) || [];
-  const repetidas = (leitura?.notas.length || 0) - novas.length;
+  // notas coladas + o que veio da ROAD (o que foi colado tem prioridade; a ROAD completa o que faltar)
+  const coladas = (leitura?.notas || []).map((n) => completarComRoad(n, road.achadas[n.numnota], padrao));
+  const novas = coladas.filter((n) => !existentes.has(n.numnota));
+  const repetidas = coladas.length - novas.length;
+  const nfDigitada = String(nota.numnota).replace(/\D/g, "");
+
+  // ---- digitando: busca a nota na ROAD (ao parar de digitar, ao sair do campo ou no Enter) ----
+  async function buscarUma(nf) {
+    if (!nf || nf.length < 4) return null;
+    setBusca({ nf, estado: "buscando" });
+    try {
+      const r = await buscarNaRoad([nf], email);
+      const a = r.achadas[nf];
+      if (!a) { setBusca({ nf, estado: "nao" }); return null; }
+      setNota((x) => (String(x.numnota).replace(/\D/g, "") !== nf ? x : {
+        ...x,
+        numped: a.numped || x.numped,
+        valor: a.valor != null ? a.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : x.valor,
+        peso: a.peso != null ? a.peso.toLocaleString("pt-BR", { maximumFractionDigits: 3 }) : x.peso,
+        carregamento: a.carregamento || x.carregamento,
+        cliente: a.cliente, codcli: a.codcli, destino: a.destino, placa_road: a.placa_road,
+      }));
+      setBusca({ nf, estado: "achou", nota: a });
+      return a;
+    } catch (e) {
+      setBusca({ nf, estado: "erro", erro: e.message });
+      return null;
+    }
+  }
+  useEffect(() => {
+    if (modo !== "UMA" || nfDigitada.length < 5 || busca.nf === nfDigitada) return;
+    const t = setTimeout(() => buscarUma(nfDigitada), 600);
+    return () => clearTimeout(t);
+  }, [nfDigitada, modo]);
+
+  // ---- colando: busca todas as notas na ROAD de uma vez ----
+  useEffect(() => {
+    const nfs = (leitura?.notas || []).map((n) => n.numnota);
+    const chave = nfs.join(",");
+    if (!nfs.length || chave === road.chave) return;
+    const t = setTimeout(async () => {
+      setRoad({ chave, achadas: {}, faltando: [], estado: "buscando" });
+      try {
+        const r = await buscarNaRoad(nfs, email);
+        setRoad({ chave, achadas: r.achadas, faltando: r.faltando, estado: "ok" });
+      } catch (e) {
+        setRoad({ chave, achadas: {}, faltando: [], estado: "erro", erro: e.message });
+      }
+    }, 500);
+    return () => clearTimeout(t);
+  }, [leitura]);
 
   async function gravar(lista) {
     setSalvando(true);
@@ -102,25 +153,35 @@ function Adicionar({ email, hoje, existentes, clientes, aoAdicionar, aoErro }) {
   }
   async function adicionarUma(e) {
     e.preventDefault();
-    const numnota = String(nota.numnota).replace(/\D/g, "");
+    const numnota = nfDigitada;
     if (!numnota) return aoErro("Informe o número da nota fiscal.");
     if (existentes.has(numnota)) return aoErro(`A nota ${numnota} já está cadastrada.`);
+    // Enter logo depois de digitar: primeiro busca na ROAD e preenche; o próximo Enter adiciona
+    if (busca.nf !== numnota) { await buscarUma(numnota); return; }
+    if (busca.estado === "buscando") return;
     const ok = await gravar([{
-      numnota, numped: String(nota.numped).replace(/\D/g, ""), codcli: "", cliente: padrao.cliente,
+      numnota, numped: String(nota.numped).replace(/\D/g, ""), codcli: nota.codcli || "",
+      cliente: (nota.cliente || padrao.cliente).toUpperCase(),
       valor: lerNumeroBR(nota.valor), peso: lerNumeroBR(nota.peso), carregamento: String(nota.carregamento).replace(/\D/g, ""),
-      destino: padrao.destino, placa_ficticia: padrao.placa_ficticia, obs: nota.obs.trim(),
+      destino: (nota.destino || padrao.destino).toUpperCase(), placa_ficticia: normPlaca(nota.placa_road) || padrao.placa_ficticia, obs: nota.obs.trim(),
     }]);
-    if (ok) { setNota(VAZIA); aoAdicionar(`Nota ${numnota} adicionada em ${padrao.placa_ficticia}.`); document.getElementById("na-nf")?.focus(); }
+    if (ok) {
+      aoAdicionar(`Nota ${numnota} adicionada${nota.cliente ? ` · ${nota.cliente}` : ""} em ${normPlaca(nota.placa_road) || padrao.placa_ficticia}.`);
+      setNota(VAZIA); setBusca({ nf: "", estado: "" });
+      document.getElementById("na-nf")?.focus();
+    }
   }
   async function adicionarColadas() {
     if (!novas.length) return;
     if (await gravar(novas)) { setTexto(""); aoAdicionar(`${novas.length} nota(s) adicionada(s)${repetidas ? ` · ${repetidas} já estavam cadastradas e foram ignoradas` : ""}.`); }
   }
 
+  const achadasColadas = coladas.filter((n) => road.achadas[n.numnota]).length;
+
   return (
     <section className="cartao na-add">
       <div className="na-add-topo">
-        <b>Adicionar notas fiscais</b>
+        <b>Adicionar notas fiscais <small className="sub">· os dados vêm da base ROAD (a mesma do site de Reentregas)</small></b>
         <div className="linha-acoes">
           <button className={`btn mini ${modo === "UMA" ? "primario" : ""}`} onClick={() => { setModo("UMA"); setAberto(true); }}>Digitar</button>
           <button className={`btn mini ${modo === "COLAR" ? "primario" : ""}`} onClick={() => { setModo("COLAR"); setAberto(true); }}>Colar várias</button>
@@ -141,31 +202,66 @@ function Adicionar({ email, hoje, existentes, clientes, aoAdicionar, aoErro }) {
             <label className="campo-data">Destino
               <input className="campo" value={destino} onChange={(e) => setDestino(e.target.value)} style={{ width: 140 }} />
             </label>
-            <span className="sub">valem para as notas que você adicionar agora</span>
+            <span className="sub">usados só quando a nota não estiver na ROAD (ou a ROAD não trouxer o dado)</span>
           </div>
           {modo === "UMA" ? (
-            <form className="na-form" onSubmit={adicionarUma}>
-              <label className="campo-data">Nota fiscal *<input id="na-nf" className="campo" inputMode="numeric" value={nota.numnota} onChange={(e) => setNota({ ...nota, numnota: e.target.value })} autoFocus style={{ width: 130 }} /></label>
-              <label className="campo-data">Pedido<input className="campo" inputMode="numeric" value={nota.numped} onChange={(e) => setNota({ ...nota, numped: e.target.value })} style={{ width: 130 }} /></label>
-              <label className="campo-data">Valor (R$)<input className="campo" inputMode="decimal" value={nota.valor} onChange={(e) => setNota({ ...nota, valor: e.target.value })} placeholder="0,00" style={{ width: 110 }} /></label>
-              <label className="campo-data">Peso (kg)<input className="campo" inputMode="decimal" value={nota.peso} onChange={(e) => setNota({ ...nota, peso: e.target.value })} placeholder="0,000" style={{ width: 100 }} /></label>
-              <label className="campo-data">Carregamento<input className="campo" inputMode="numeric" value={nota.carregamento} onChange={(e) => setNota({ ...nota, carregamento: e.target.value })} style={{ width: 120 }} /></label>
-              <label className="campo-data">Obs<input className="campo" value={nota.obs} onChange={(e) => setNota({ ...nota, obs: e.target.value })} style={{ minWidth: 180 }} /></label>
-              <button className="btn primario" disabled={salvando}>{salvando ? "Salvando…" : "＋ Adicionar"}</button>
-            </form>
+            <>
+              <form className="na-form" onSubmit={adicionarUma}>
+                <label className="campo-data">Nota fiscal *
+                  <input id="na-nf" className="campo" inputMode="numeric" value={nota.numnota} autoFocus style={{ width: 130 }}
+                    onChange={(e) => setNota({ ...VAZIA, obs: nota.obs, numnota: e.target.value })}
+                    onBlur={() => nfDigitada && busca.nf !== nfDigitada && buscarUma(nfDigitada)} />
+                </label>
+                <label className="campo-data">Pedido<input className="campo" inputMode="numeric" value={nota.numped} onChange={(e) => setNota({ ...nota, numped: e.target.value })} style={{ width: 130 }} /></label>
+                <label className="campo-data">Valor (R$)<input className="campo" inputMode="decimal" value={nota.valor} onChange={(e) => setNota({ ...nota, valor: e.target.value })} placeholder="0,00" style={{ width: 110 }} /></label>
+                <label className="campo-data">Peso (kg)<input className="campo" inputMode="decimal" value={nota.peso} onChange={(e) => setNota({ ...nota, peso: e.target.value })} placeholder="0,000" style={{ width: 100 }} /></label>
+                <label className="campo-data">Carregamento<input className="campo" inputMode="numeric" value={nota.carregamento} onChange={(e) => setNota({ ...nota, carregamento: e.target.value })} style={{ width: 120 }} /></label>
+                <label className="campo-data">Obs<input className="campo" value={nota.obs} onChange={(e) => setNota({ ...nota, obs: e.target.value })} style={{ minWidth: 160 }} /></label>
+                <button className="btn primario" disabled={salvando || busca.estado === "buscando"}>{salvando ? "Salvando…" : "＋ Adicionar"}</button>
+              </form>
+              <div className={`na-road na-road-${busca.nf === nfDigitada ? busca.estado : ""}`}>
+                {!nfDigitada ? <span className="sub">Digite a nota fiscal: pedido, cliente, valor, peso e carregamento são preenchidos pela ROAD.</span>
+                  : existentes.has(nfDigitada) ? <span className="t-laranja">A nota {nfDigitada} já está cadastrada nesta aba.</span>
+                  : busca.nf !== nfDigitada ? <span className="sub">aperte Enter ou espere para buscar na ROAD…</span>
+                  : busca.estado === "buscando" ? <span className="sub">🔎 buscando a nota {nfDigitada} na ROAD…</span>
+                  : busca.estado === "achou" ? <span>✔ Encontrada na ROAD: <b>{busca.nota.cliente || "—"}</b>{busca.nota.placa_road ? <> · placa <b>{busca.nota.placa_road}</b></> : ""}{busca.nota.destino ? ` · ${busca.nota.destino}` : ""}{busca.nota.dt_liberado ? ` · liberado ${dm(busca.nota.dt_liberado)}` : ""} <small className="sub">— confira e aperte Enter (ou ＋ Adicionar)</small></span>
+                  : busca.estado === "nao" ? <span className="t-laranja">Nota {nfDigitada} não encontrada na ROAD — preencha os campos à mão (usa o cliente, placa e destino acima).</span>
+                  : <span className="t-vermelho">Não deu para consultar a ROAD: {busca.erro}</span>}
+              </div>
+            </>
           ) : (
             <>
               <textarea className="colar" rows={5} value={texto} onChange={(e) => setTexto(e.target.value)}
-                placeholder={"Cole do Excel/Winthor com o cabeçalho (NUMNOTA, NUMPED, CLIENTE, VLTOTAL, PESOBRUTOTOT, NUMCARREGAMENTO…)\nou só os números das notas, um por linha."} />
+                placeholder={"Cole os números das notas fiscais (um por linha) — o resto vem da ROAD.\nTambém aceita colar do Excel/Winthor com cabeçalho (NUMNOTA, NUMPED, CLIENTE, VLTOTAL, PESOBRUTOTOT, NUMCARREGAMENTO…)."} />
               <div className="linha-acoes">
                 {leitura && (leitura.erro ? <span className="t-vermelho">{leitura.erro}</span> : (
                   <span>
-                    <b>{leitura.notas.length}</b> nota(s){leitura.semCabecalho ? " (sem cabeçalho: cliente, placa e destino dos campos acima)" : ""} · {moeda(somar(leitura.notas).valor)} · {num(somar(leitura.notas).peso)} kg
+                    <b>{coladas.length}</b> nota(s) · {moeda(somar(coladas).valor)} · {num(somar(coladas).peso)} kg
+                    {road.estado === "buscando" && <span className="sub"> · 🔎 buscando na ROAD…</span>}
+                    {road.estado === "ok" && <> · <b className="t-verde">{achadasColadas} achada(s) na ROAD</b>{road.faltando.length ? <b className="t-laranja"> · {road.faltando.length} não achada(s): {road.faltando.slice(0, 8).join(", ")}{road.faltando.length > 8 ? "…" : ""}</b> : ""}</>}
+                    {road.estado === "erro" && <span className="t-vermelho"> · ROAD: {road.erro}</span>}
                     {repetidas > 0 && <b className="t-laranja"> · {repetidas} já cadastrada(s)</b>}
                   </span>
                 ))}
-                <button className="btn primario" disabled={!novas.length || salvando} onClick={adicionarColadas}>{salvando ? "Salvando…" : `＋ Adicionar ${novas.length || ""} nota(s)`}</button>
+                <button className="btn primario" disabled={!novas.length || salvando || road.estado === "buscando"} onClick={adicionarColadas}>{salvando ? "Salvando…" : `＋ Adicionar ${novas.length || ""} nota(s)`}</button>
               </div>
+              {coladas.length > 0 && road.estado === "ok" && (
+                <div className="tabela-rolagem na-previa">
+                  <table className="na">
+                    <thead><tr><th>Nota fiscal</th><th>Pedido</th><th>Cliente</th><th>Placa</th><th>Carreg.</th><th className="n">Peso (kg)</th><th className="n">Valor</th><th></th></tr></thead>
+                    <tbody>
+                      {coladas.slice(0, 200).map((n) => (
+                        <tr key={n.numnota} className={existentes.has(n.numnota) ? "na-repetida" : ""}>
+                          <td className="ag-ped"><b>{n.numnota}</b></td><td className="ag-ped">{n.numped || "—"}</td><td className="ag-cli">{n.cliente}</td>
+                          <td>{n.placa_ficticia}</td><td>{n.carregamento || "—"}</td>
+                          <td className="n">{n.peso != null ? num(n.peso) : "—"}</td><td className="n">{n.valor != null ? moeda(n.valor) : "—"}</td>
+                          <td className="sub">{existentes.has(n.numnota) ? "já cadastrada" : road.achadas[n.numnota] ? "ROAD" : "não achada"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </>
           )}
         </>
