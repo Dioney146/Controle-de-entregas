@@ -9,7 +9,7 @@ import { fmtDataHora, baixarCSV } from "../../lib/util";
 
 // Log de alterações: quem mudou o quê, quando, de/para (gravado pelo próprio banco)
 
-const TELA = { saidas: "Frete / Retorno", veiculos: "Veículos", pessoas: "Motoristas", programacao: "Programação", agendamentos: "Agendamentos" };
+const TELA = { saidas: "Frete / Retorno", veiculos: "Veículos", pessoas: "Motoristas", programacao: "Programação", agendamentos: "Agendamentos", notas_agendadas: "Notas agendadas" };
 const CAMPO = {
   motorista: "Motorista", entregador: "Entregadores", hora_saida: "Saída", status: "Status",
   cancelados: "Cancelados", reentregas: "Reentregas", pendentes: "Pendentes", celular_devolvido: "Celular devolvido",
@@ -17,9 +17,10 @@ const CAMPO = {
   entregas: "Entregas", destino: "Infor", obs: "Obs", kg: "KG", valor: "Valor", transportadora: "Transportadora",
   tipo: "Tipo", nome: "Nome", funcao: "Função", ativo: "Ativo", ordem: "Ordem", data: "Data", placa: "Placa",
   registros: "Registros", motivo: "Motivo da exclusão",
+  numnota: "Nota fiscal", dt_saida: "Data de saída", placa_ficticia: "Placa fictícia", cliente: "Cliente", peso: "Peso",
 };
-const STATUS = { PROGRAMADO: "A sair", EM_ROTA: "Saiu", RETORNOU: "Retornou" };
-const ESCONDER = new Set(["arquivado_em", "arquivado_por", "ordem", "liberado_retorno_em", "liberado_retorno_por", "adicionado_por", "placa_original", "placa_trocada_por", "placa_trocada_em"]); // detalhes repetidos
+const STATUS = { PROGRAMADO: "A sair", EM_ROTA: "Saiu", RETORNOU: "Retornou", PENDENTE: "Pendente", ROTEIRIZADO: "Roteirizado" };
+const ESCONDER = new Set(["arquivado_em", "arquivado_por", "ordem", "liberado_retorno_em", "liberado_retorno_por", "adicionado_por", "placa_original", "placa_trocada_por", "placa_trocada_em", "roteirizado_em", "roteirizado_por", "registrado_por"]); // detalhes repetidos
 
 function valor(campo, v) {
   if (v === null || v === undefined || v === "") return "";

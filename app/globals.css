@@ -673,3 +673,36 @@ table.bk-agr td.bk-x { width: 30px; text-align: center; }
 .bk-barra-val small { font-weight: 400; color: var(--suave); }
 @media (max-width: 1100px) { .bk-cats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 600px) { .bk-grade { grid-template-columns: 1fr; } .bk-barra-linha { grid-template-columns: 110px minmax(0, 1fr) 110px; } }
+
+/* ---------- Notas agendadas ---------- */
+.na-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.na-kpis .ag-etapa { cursor: default; }
+.na-kpis .na-kpi-pend { border-left-color: #b91c1c; }
+.na-kpis .na-kpi-rote { border-left-color: #1e8e4e; }
+.na-kpis .na-kpi-sem { border-left-color: #f59e0b; }
+.na-add { margin-bottom: 10px; display: flex; flex-direction: column; gap: 10px; border-left: 4px solid #0369a1; }
+.na-add-topo { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.na-padrao { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; padding: 8px 10px; background: #f4f7fa; border-radius: 6px; }
+.na-form { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+.na-add textarea.colar { width: 100%; font-family: ui-monospace, monospace; font-size: .76rem; }
+.na-pend { margin-bottom: 10px; border-top: 3px solid #b91c1c; }
+.na-rote { margin-bottom: 10px; border-top: 3px solid #1e8e4e; }
+.na-pend .tabela-rolagem { max-height: 420px; overflow-y: auto; }
+table.na td.n, table.na th.n { text-align: right; }
+table.na td.na-ck, table.na th.na-ck { width: 28px; text-align: center; }
+table.na td.na-x { width: 30px; text-align: center; }
+table.na tr.marcado td { background: #fff3f3; }
+table.na td.ag-ped { font-family: ui-monospace, monospace; font-size: .8rem; }
+table.na td.ag-cli { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.na-fict { font-family: ui-monospace, monospace; font-size: .76rem; padding: 1px 6px; border-radius: 4px; background: #f1f3f6; color: #667; border: 1px dashed #c3cad4; }
+.na-troca s { color: #98a2b3; font-size: .78rem; }
+.na-rot { padding: 10px 12px; border-top: 1px solid var(--borda); background: #fafbfc; display: flex; flex-direction: column; gap: 8px; }
+.na-rot-tit { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; }
+.na-dias { align-self: flex-end; padding-bottom: 2px; }
+.na-nomes { align-self: center; font-size: .84rem; min-width: 260px; flex: 1; }
+.na-frete-dia { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.na-chip-placa { border: 1px solid var(--borda); background: #fff; border-radius: 6px; padding: 2px 8px; font: inherit; font-size: .76rem; font-weight: 700; cursor: pointer; display: inline-flex; gap: 4px; align-items: baseline; }
+.na-chip-placa small { font-weight: 400; color: var(--suave); font-size: .68rem; }
+.na-chip-placa:hover, .na-chip-placa.sel { border-color: #13263b; background: #e8edf3; }
+.btn.link.perigo { color: var(--vermelho); margin-left: 8px; }
+@media (max-width: 900px) { .na-kpis { grid-template-columns: 1fr; } }

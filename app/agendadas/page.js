@@ -1,0 +1,426 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { sb, buscarTudo } from "../../lib/supabase";
+import { useTempoReal } from "../../lib/hooks";
+import { useUsuario } from "../../components/Casca";
+import { hojeISO, somarDias, fmtData, fmtDataHora, num, moeda, baixarCSV, normPlaca, lerNumeroBR } from "../../lib/util";
+import { lerColagem, nomesDoFrete, somar, PLACAS_FICTICIAS, CLIENTE_PADRAO } from "../../lib/notasAgendadas";
+
+// Notas agendadas: notas fiscais de agendamento (ex.: J A GOMES) faturadas em placa fictícia.
+// 1) Adiciona as notas (digitando ou colando) -> ficam PENDENTES.
+// 2) Marca as notas, informa a nova placa e a data de saída -> ROTEIRIZADO.
+//    Motorista e entregador vêm do frete (Frete / Saídas) da nova placa nesse dia.
+
+const dm = (iso) => (iso ? fmtData(iso).slice(0, 5) : "—");
+const diasDesde = (iso, hoje) => (iso ? Math.max(0, Math.round((Date.parse(hoje + "T12:00:00Z") - Date.parse(iso + "T12:00:00Z")) / 86400000)) : null);
+const br = (n) => (n == null ? "" : String(Math.round(n * 100) / 100).replace(".", ","));
+const VAZIA = { numnota: "", numped: "", valor: "", peso: "", carregamento: "", obs: "" };
+
+export default function NotasAgendadas() {
+  const { email } = useUsuario();
+  const hoje = hojeISO();
+  const [pend, setPend] = useState([]);
+  const [rote, setRote] = useState([]);
+  const [placasCad, setPlacasCad] = useState([]);
+  const [carregando, setCarregando] = useState(true);
+  const [semTabela, setSemTabela] = useState(false);
+  const [msg, setMsg] = useState(null);
+  const [de, setDe] = useState(somarDias(hoje, -7));
+  const [ate, setAte] = useState(somarDias(hoje, 7));
+
+  async function carregar() {
+    try {
+      const [p, r, v] = await Promise.all([
+        buscarTudo(() => sb().from("notas_agendadas").select("*").eq("status", "PENDENTE").order("dt_registro").order("numnota")),
+        buscarTudo(() => sb().from("notas_agendadas").select("*").eq("status", "ROTEIRIZADO").gte("dt_saida", de).lte("dt_saida", ate).order("dt_saida", { ascending: false }).order("placa")),
+        sb().from("veiculos").select("placa, transportadora, tipo").order("placa"),
+      ]);
+      setPend(p); setRote(r); setPlacasCad(v.data || []); setSemTabela(false);
+    } catch (e) {
+      setSemTabela(/notas_agendadas|relation|schema cache/i.test(e?.message || ""));
+      if (!/notas_agendadas|relation|schema cache/i.test(e?.message || "")) setMsg({ tipo: "erro", txt: e.message });
+    }
+    setCarregando(false);
+  }
+  useEffect(() => { carregar(); }, [de, ate]);
+  useTempoReal(carregar, [de, ate]);
+
+  const tP = somar(pend), tR = somar(rote);
+  const placasRote = new Set(rote.map((n) => n.placa)).size;
+
+  return (
+    <>
+      <div className="cabecalho-pagina">
+        <h1>Notas agendadas <small className="sub">placa fictícia → placa de verdade</small></h1>
+      </div>
+
+      {semTabela && <div className="alerta aviso">Rode o arquivo <b>18_notas_agendadas.sql</b> no Supabase (SQL Editor › Run) para ativar esta aba.</div>}
+      {msg && <div className={`alerta ${msg.tipo}`} onClick={() => setMsg(null)}>{msg.txt}</div>}
+
+      <section className="ag-funil na-kpis">
+        <div className="ag-etapa na-kpi-pend"><span>Pendentes (placa fictícia)</span><b>{tP.qtd} <small>notas</small></b><em className="ag-valor">{moeda(tP.valor)}</em><em>{num(tP.peso)} kg · {new Set(pend.map((n) => n.cliente)).size} cliente(s)</em></div>
+        <div className="ag-etapa na-kpi-rote"><span>Roteirizadas · saída {dm(de)} a {dm(ate)}</span><b>{tR.qtd} <small>notas</small></b><em className="ag-valor">{moeda(tR.valor)}</em><em>{num(tR.peso)} kg · {placasRote} placa(s)</em></div>
+        <div className="ag-etapa na-kpi-sem"><span>Roteirizadas sem motorista</span><b>{rote.filter((n) => !n.motorista).length} <small>notas</small></b><em>placa ainda não está no frete do dia</em></div>
+      </section>
+
+      <Adicionar email={email} hoje={hoje} existentes={new Set([...pend, ...rote].map((n) => n.numnota))} clientes={[...new Set([...pend, ...rote].map((n) => n.cliente).filter(Boolean))]}
+        aoAdicionar={(t) => { setMsg({ tipo: "ok", txt: t }); carregar(); }} aoErro={(t) => setMsg({ tipo: "erro", txt: t })} />
+
+      <Pendentes pend={pend} hoje={hoje} email={email} placasCad={placasCad} carregando={carregando}
+        aviso={(tipo, txt) => setMsg({ tipo, txt })} recarregar={carregar} />
+
+      <Roteirizadas rote={rote} de={de} ate={ate} setDe={setDe} setAte={setAte} hoje={hoje}
+        aviso={(tipo, txt) => setMsg({ tipo, txt })} recarregar={carregar} />
+    </>
+  );
+}
+
+// ---------------- adicionar notas ----------------
+function Adicionar({ email, hoje, existentes, clientes, aoAdicionar, aoErro }) {
+  const [aberto, setAberto] = useState(true);
+  const [modo, setModo] = useState("UMA");
+  const [cliente, setCliente] = useState(CLIENTE_PADRAO);
+  const [placaF, setPlacaF] = useState(PLACAS_FICTICIAS[0]);
+  const [destino, setDestino] = useState("AGEN JA");
+  const [nota, setNota] = useState(VAZIA);
+  const [texto, setTexto] = useState("");
+  const [salvando, setSalvando] = useState(false);
+
+  const padrao = { cliente: cliente.toUpperCase().trim(), placa_ficticia: normPlaca(placaF) || PLACAS_FICTICIAS[0], destino: destino.toUpperCase().trim() };
+  const leitura = useMemo(() => (texto.trim() ? lerColagem(texto, padrao) : null), [texto, cliente, placaF, destino]);
+  const novas = leitura?.notas.filter((n) => !existentes.has(n.numnota)) || [];
+  const repetidas = (leitura?.notas.length || 0) - novas.length;
+
+  async function gravar(lista) {
+    setSalvando(true);
+    const regs = lista.map((n) => ({ ...n, dt_registro: hoje, registrado_por: email || null, status: "PENDENTE" }));
+    const { error } = await sb().from("notas_agendadas").insert(regs);
+    setSalvando(false);
+    if (error) { aoErro(/duplicate|unique/i.test(error.message) ? "Alguma dessas notas já está cadastrada." : error.message); return false; }
+    return true;
+  }
+  async function adicionarUma(e) {
+    e.preventDefault();
+    const numnota = String(nota.numnota).replace(/\D/g, "");
+    if (!numnota) return aoErro("Informe o número da nota fiscal.");
+    if (existentes.has(numnota)) return aoErro(`A nota ${numnota} já está cadastrada.`);
+    const ok = await gravar([{
+      numnota, numped: String(nota.numped).replace(/\D/g, ""), codcli: "", cliente: padrao.cliente,
+      valor: lerNumeroBR(nota.valor), peso: lerNumeroBR(nota.peso), carregamento: String(nota.carregamento).replace(/\D/g, ""),
+      destino: padrao.destino, placa_ficticia: padrao.placa_ficticia, obs: nota.obs.trim(),
+    }]);
+    if (ok) { setNota(VAZIA); aoAdicionar(`Nota ${numnota} adicionada em ${padrao.placa_ficticia}.`); document.getElementById("na-nf")?.focus(); }
+  }
+  async function adicionarColadas() {
+    if (!novas.length) return;
+    if (await gravar(novas)) { setTexto(""); aoAdicionar(`${novas.length} nota(s) adicionada(s)${repetidas ? ` · ${repetidas} já estavam cadastradas e foram ignoradas` : ""}.`); }
+  }
+
+  return (
+    <section className="cartao na-add">
+      <div className="na-add-topo">
+        <b>Adicionar notas fiscais</b>
+        <div className="linha-acoes">
+          <button className={`btn mini ${modo === "UMA" ? "primario" : ""}`} onClick={() => { setModo("UMA"); setAberto(true); }}>Digitar</button>
+          <button className={`btn mini ${modo === "COLAR" ? "primario" : ""}`} onClick={() => { setModo("COLAR"); setAberto(true); }}>Colar várias</button>
+          <button className="btn link" onClick={() => setAberto(!aberto)}>{aberto ? "▴ recolher" : "▾ abrir"}</button>
+        </div>
+      </div>
+      {aberto && (
+        <>
+          <div className="na-padrao">
+            <label className="campo-data">Cliente
+              <input className="campo" list="na-clientes" value={cliente} onChange={(e) => setCliente(e.target.value)} style={{ minWidth: 240 }} />
+              <datalist id="na-clientes">{[CLIENTE_PADRAO, ...clientes.filter((c) => c !== CLIENTE_PADRAO)].map((c) => <option key={c} value={c} />)}</datalist>
+            </label>
+            <label className="campo-data">Placa fictícia
+              <input className="campo" list="na-ficticias" value={placaF} onChange={(e) => setPlacaF(e.target.value.toUpperCase())} style={{ width: 120 }} />
+              <datalist id="na-ficticias">{PLACAS_FICTICIAS.map((p) => <option key={p} value={p} />)}</datalist>
+            </label>
+            <label className="campo-data">Destino
+              <input className="campo" value={destino} onChange={(e) => setDestino(e.target.value)} style={{ width: 140 }} />
+            </label>
+            <span className="sub">valem para as notas que você adicionar agora</span>
+          </div>
+          {modo === "UMA" ? (
+            <form className="na-form" onSubmit={adicionarUma}>
+              <label className="campo-data">Nota fiscal *<input id="na-nf" className="campo" inputMode="numeric" value={nota.numnota} onChange={(e) => setNota({ ...nota, numnota: e.target.value })} autoFocus style={{ width: 130 }} /></label>
+              <label className="campo-data">Pedido<input className="campo" inputMode="numeric" value={nota.numped} onChange={(e) => setNota({ ...nota, numped: e.target.value })} style={{ width: 130 }} /></label>
+              <label className="campo-data">Valor (R$)<input className="campo" inputMode="decimal" value={nota.valor} onChange={(e) => setNota({ ...nota, valor: e.target.value })} placeholder="0,00" style={{ width: 110 }} /></label>
+              <label className="campo-data">Peso (kg)<input className="campo" inputMode="decimal" value={nota.peso} onChange={(e) => setNota({ ...nota, peso: e.target.value })} placeholder="0,000" style={{ width: 100 }} /></label>
+              <label className="campo-data">Carregamento<input className="campo" inputMode="numeric" value={nota.carregamento} onChange={(e) => setNota({ ...nota, carregamento: e.target.value })} style={{ width: 120 }} /></label>
+              <label className="campo-data">Obs<input className="campo" value={nota.obs} onChange={(e) => setNota({ ...nota, obs: e.target.value })} style={{ minWidth: 180 }} /></label>
+              <button className="btn primario" disabled={salvando}>{salvando ? "Salvando…" : "＋ Adicionar"}</button>
+            </form>
+          ) : (
+            <>
+              <textarea className="colar" rows={5} value={texto} onChange={(e) => setTexto(e.target.value)}
+                placeholder={"Cole do Excel/Winthor com o cabeçalho (NUMNOTA, NUMPED, CLIENTE, VLTOTAL, PESOBRUTOTOT, NUMCARREGAMENTO…)\nou só os números das notas, um por linha."} />
+              <div className="linha-acoes">
+                {leitura && (leitura.erro ? <span className="t-vermelho">{leitura.erro}</span> : (
+                  <span>
+                    <b>{leitura.notas.length}</b> nota(s){leitura.semCabecalho ? " (sem cabeçalho: cliente, placa e destino dos campos acima)" : ""} · {moeda(somar(leitura.notas).valor)} · {num(somar(leitura.notas).peso)} kg
+                    {repetidas > 0 && <b className="t-laranja"> · {repetidas} já cadastrada(s)</b>}
+                  </span>
+                ))}
+                <button className="btn primario" disabled={!novas.length || salvando} onClick={adicionarColadas}>{salvando ? "Salvando…" : `＋ Adicionar ${novas.length || ""} nota(s)`}</button>
+              </div>
+            </>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
+
+// ---------------- pendentes + roteirizar ----------------
+function Pendentes({ pend, hoje, email, placasCad, carregando, aviso, recarregar }) {
+  const [busca, setBusca] = useState("");
+  const [marcadas, setMarcadas] = useState(() => new Set());
+  const [placa, setPlaca] = useState("");
+  const [dtSaida, setDtSaida] = useState("");
+  const [freteDia, setFreteDia] = useState([]);
+  const [enviando, setEnviando] = useState(false);
+
+  // frete do dia da saída: placas sugeridas e motorista / entregador
+  useEffect(() => {
+    if (!dtSaida) { setFreteDia([]); return; }
+    let vivo = true;
+    sb().from("saidas").select("*").eq("data", dtSaida).then(({ data }) => { if (vivo) setFreteDia(data || []); });
+    return () => { vivo = false; };
+  }, [dtSaida]);
+
+  const b = busca.trim().toUpperCase();
+  const lista = pend.filter((n) => !b || [n.numnota, n.numped, n.cliente, n.placa_ficticia, n.destino, n.carregamento, n.obs].some((x) => String(x || "").toUpperCase().includes(b)));
+  const sel = lista.filter((n) => marcadas.has(n.id));
+  const tS = somar(sel);
+  const todas = lista.length > 0 && lista.every((n) => marcadas.has(n.id));
+  const nomes = nomesDoFrete(freteDia, placa);
+  const placaN = normPlaca(placa);
+
+  function alternar(id) { const n = new Set(marcadas); n.has(id) ? n.delete(id) : n.add(id); setMarcadas(n); }
+
+  async function roteirizar() {
+    if (!sel.length) return aviso("erro", "Marque ao menos uma nota na tabela.");
+    if (!placaN) return aviso("erro", "Informe a nova placa.");
+    if (!dtSaida) return aviso("erro", "Informe a data de saída.");
+    setEnviando(true);
+    const placaFinal = nomes?.placaAtual || placaN; // placa trocada no frete: grava a atual
+    const { error } = await sb().from("notas_agendadas").update({
+      status: "ROTEIRIZADO", placa: placaFinal, dt_saida: dtSaida,
+      motorista: nomes?.motorista || "", entregador: nomes?.entregador || "",
+      roteirizado_em: new Date().toISOString(), roteirizado_por: email || null, updated_at: new Date().toISOString(),
+    }).in("id", sel.map((n) => n.id));
+    setEnviando(false);
+    if (error) return aviso("erro", error.message);
+    aviso("ok", `${sel.length} nota(s) roteirizada(s) na placa ${placaFinal}${nomes?.trocada ? ` (${placaN} foi trocada no frete por ${placaFinal})` : ""} · saída ${fmtData(dtSaida)}${nomes ? "" : " · a placa ainda não está no frete desse dia (motorista/entregador em branco)"}.`);
+    setMarcadas(new Set()); setPlaca("");
+    recarregar();
+  }
+  async function excluir(n) {
+    if (!confirm(`Excluir a nota ${n.numnota} (${n.cliente})?`)) return;
+    const { error } = await sb().from("notas_agendadas").delete().eq("id", n.id);
+    if (error) return aviso("erro", error.message);
+    recarregar();
+  }
+  async function excluirMarcadas() {
+    if (!confirm(`Excluir ${sel.length} nota(s) marcada(s)?`)) return;
+    const { error } = await sb().from("notas_agendadas").delete().in("id", sel.map((n) => n.id));
+    if (error) return aviso("erro", error.message);
+    setMarcadas(new Set()); recarregar();
+  }
+
+  // placas sugeridas: as do frete do dia primeiro, depois as cadastradas
+  const sugestoes = [...new Set([...freteDia.map((s) => s.placa), ...placasCad.map((v) => v.placa)])];
+
+  return (
+    <section className="cartao sem-pad na-pend">
+      <div className="barra-tabela">
+        <div><b className="t-vermelho">Notas pendentes</b> <span className="sub">· {pend.length} nota(s) em placa fictícia</span></div>
+        <input className="campo" placeholder="Buscar nota, pedido, cliente…" value={busca} onChange={(e) => setBusca(e.target.value)} style={{ minWidth: 260 }} />
+      </div>
+      <div className="tabela-rolagem">
+        <table className="na">
+          <thead><tr>
+            <th className="na-ck"><input type="checkbox" checked={todas} onChange={() => setMarcadas(todas ? new Set() : new Set(lista.map((n) => n.id)))} title="Marcar todas" /></th>
+            <th>Nota fiscal</th><th>Pedido</th><th>Cliente</th><th>Placa fictícia</th><th>Destino</th><th>Carreg.</th><th>Registro</th><th className="n">Dias</th><th className="n">Peso (kg)</th><th className="n">Valor</th><th>Obs</th><th></th>
+          </tr></thead>
+          <tbody>
+            {lista.map((n) => (
+              <tr key={n.id} className={marcadas.has(n.id) ? "marcado" : ""} onClick={() => alternar(n.id)} style={{ cursor: "pointer" }}>
+                <td className="na-ck" onClick={(e) => e.stopPropagation()}><input type="checkbox" checked={marcadas.has(n.id)} onChange={() => alternar(n.id)} /></td>
+                <td className="ag-ped"><b>{n.numnota}</b></td>
+                <td className="ag-ped">{n.numped || "—"}</td>
+                <td className="ag-cli" title={n.cliente}>{n.cliente}</td>
+                <td><span className="na-fict">{n.placa_ficticia}</span></td>
+                <td>{n.destino}</td>
+                <td>{n.carregamento || "—"}</td>
+                <td title={n.registrado_por ? `por ${n.registrado_por}` : ""}>{dm(n.dt_registro)}</td>
+                <td className="n">{diasDesde(n.dt_registro, hoje)}</td>
+                <td className="n">{n.peso != null ? num(n.peso) : "—"}</td>
+                <td className="n">{n.valor != null ? moeda(n.valor) : "—"}</td>
+                <td className="sub">{n.obs}</td>
+                <td className="na-x" onClick={(e) => e.stopPropagation()}><button className="btn-x" onClick={() => excluir(n)} title="Excluir nota">✕</button></td>
+              </tr>
+            ))}
+            {!lista.length && <tr><td colSpan={13} className="vazio">{carregando ? "Carregando…" : b ? "Nenhuma nota com essa busca." : "Nenhuma nota pendente. 👍"}</td></tr>}
+          </tbody>
+          {lista.length > 0 && <tfoot><tr><td colSpan={9}>TOTAL · {lista.length} nota(s)</td><td className="n">{num(somar(lista).peso)}</td><td className="n">{moeda(somar(lista).valor)}</td><td colSpan={2}></td></tr></tfoot>}
+        </table>
+      </div>
+
+      <div className="na-rot">
+        <div className="na-rot-tit">
+          <b>Roteirizar</b>
+          {sel.length
+            ? <span><b>{sel.length}</b> nota(s) · {new Set(sel.map((n) => n.cliente)).size} cliente(s) · {num(tS.peso)} kg · {moeda(tS.valor)}
+                <button className="btn link perigo" onClick={excluirMarcadas}>excluir marcadas</button></span>
+            : <span className="sub">marque as notas na tabela acima</span>}
+        </div>
+        <div className="na-form">
+          <label className="campo-data">Data de saída *
+            <input className="campo" type="date" value={dtSaida} onChange={(e) => setDtSaida(e.target.value)} />
+          </label>
+          <div className="linha-acoes na-dias">
+            {[["Hoje", 0], ["Amanhã", 1], ["D+2", 2]].map(([t, d]) => (
+              <button key={t} type="button" className={`btn mini ${dtSaida === somarDias(hoje, d) ? "primario" : ""}`} onClick={() => setDtSaida(somarDias(hoje, d))}>{t}</button>
+            ))}
+          </div>
+          <label className="campo-data">Nova placa *
+            <input className="campo" list="na-placas" value={placa} onChange={(e) => setPlaca(e.target.value.toUpperCase())} placeholder="ABC1D23" style={{ width: 130 }} />
+            <datalist id="na-placas">{sugestoes.map((p) => <option key={p} value={p} />)}</datalist>
+          </label>
+          <div className="na-nomes">
+            {!placaN || !dtSaida ? <span className="sub">motorista e entregador vêm do frete da placa nesse dia</span>
+              : nomes ? <span>{nomes.trocada && <span className="marca-troca">⇄ {placaN} » {nomes.placaAtual}</span>} 🚚 No frete de {dm(dtSaida)}: <b>{nomes.motorista || "sem motorista"}</b> · <b>{nomes.entregador || "sem entregador"}</b>{nomes.destino ? <small className="sub"> · {nomes.destino}</small> : ""}</span>
+              : <span className="t-laranja">{placaN} não está no frete de {dm(dtSaida)} — dá para roteirizar; os nomes ficam em branco e você atualiza depois.</span>}
+          </div>
+          <button className="btn primario" disabled={enviando || !sel.length} onClick={roteirizar}>{enviando ? "Roteirizando…" : `✅ Roteirizar ${sel.length || ""} nota(s)`}</button>
+        </div>
+        {dtSaida && freteDia.length > 0 && (
+          <div className="na-frete-dia">
+            <span className="sub">Placas no frete de {dm(dtSaida)}:</span>
+            {freteDia.slice().sort((a, b) => String(a.placa).localeCompare(String(b.placa))).map((s) => (
+              <button key={s.id} type="button" className={`na-chip-placa ${normPlaca(s.placa) === placaN ? "sel" : ""}`} onClick={() => setPlaca(s.placa)} title={`${s.motorista || "—"} · ${s.entregador || "—"} · ${s.destino || s.zona || ""}`}>
+                {s.placa}<small>{s.zona || s.destino}</small>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+// ---------------- roteirizadas + relatório por placa ----------------
+function Roteirizadas({ rote, de, ate, setDe, setAte, hoje, aviso, recarregar }) {
+  const [busca, setBusca] = useState("");
+  const [atualizando, setAtualizando] = useState(false);
+  const b = busca.trim().toUpperCase();
+  const lista = rote.filter((n) => !b || [n.numnota, n.numped, n.cliente, n.placa, n.placa_ficticia, n.motorista, n.entregador].some((x) => String(x || "").toUpperCase().includes(b)));
+  const t = somar(lista);
+
+  const grupos = useMemo(() => {
+    const m = new Map();
+    for (const n of lista) {
+      const k = `${n.dt_saida}|${n.placa}`;
+      const g = m.get(k) || { k, dt_saida: n.dt_saida, placa: n.placa, motorista: n.motorista, entregador: n.entregador, notas: [], clientes: new Set() };
+      g.notas.push(n); g.clientes.add(n.cliente); g.motorista ||= n.motorista; g.entregador ||= n.entregador;
+      m.set(k, g);
+    }
+    return [...m.values()].sort((a, b) => String(b.dt_saida).localeCompare(String(a.dt_saida)) || a.placa.localeCompare(b.placa));
+  }, [lista]);
+
+  async function devolver(n) {
+    if (!confirm(`Devolver a nota ${n.numnota} (${n.cliente}) para PENDENTE?`)) return;
+    const { error } = await sb().from("notas_agendadas").update({ status: "PENDENTE", placa: "", dt_saida: null, motorista: "", entregador: "", roteirizado_em: null, roteirizado_por: null, updated_at: new Date().toISOString() }).eq("id", n.id);
+    if (error) return aviso("erro", error.message);
+    recarregar();
+  }
+  // busca de novo motorista / entregador no frete (para as notas roteirizadas antes de a placa entrar no frete, ou com troca de nomes)
+  async function atualizarNomes() {
+    setAtualizando(true);
+    const datas = [...new Set(lista.map((n) => n.dt_saida))];
+    const { data, error } = await sb().from("saidas").select("*").in("data", datas);
+    if (error) { setAtualizando(false); return aviso("erro", error.message); }
+    let mudou = 0;
+    for (const n of lista) {
+      const f = nomesDoFrete((data || []).filter((s) => s.data === n.dt_saida), n.placa);
+      if (f && (f.motorista !== n.motorista || f.entregador !== n.entregador)) {
+        const r = await sb().from("notas_agendadas").update({ motorista: f.motorista, entregador: f.entregador, updated_at: new Date().toISOString() }).eq("id", n.id);
+        if (!r.error) mudou++;
+      }
+    }
+    setAtualizando(false);
+    aviso("ok", mudou ? `Motorista/entregador atualizados em ${mudou} nota(s).` : "Nada para atualizar: os nomes já estão iguais aos do frete (ou as placas ainda não estão no frete).");
+    recarregar();
+  }
+  function exportar() {
+    baixarCSV(`notas_agendadas_${de}_a_${ate}.csv`, ["NOTA FISCAL", "PEDIDO", "CLIENTE", "PLACA FICTICIA", "NOVA PLACA", "DATA SAIDA", "MOTORISTA", "ENTREGADOR", "DESTINO", "CARREGAMENTO", "PESO", "VALOR", "ROTEIRIZADO POR"],
+      lista.map((n) => [n.numnota, n.numped, n.cliente, n.placa_ficticia, n.placa, fmtData(n.dt_saida), n.motorista, n.entregador, n.destino, n.carregamento, br(n.peso), br(n.valor), n.roteirizado_por || ""]));
+  }
+
+  return (
+    <>
+      <section className="cartao sem-pad na-rote">
+        <div className="barra-tabela">
+          <div><b className="t-verde">Notas roteirizadas</b> <span className="sub">· pela data de saída</span></div>
+          <div className="linha-acoes">
+            <label className="campo-data">Saída de<input type="date" value={de} onChange={(e) => setDe(e.target.value || hoje)} /></label>
+            <label className="campo-data">até<input type="date" value={ate} onChange={(e) => setAte(e.target.value || hoje)} /></label>
+            <input className="campo" placeholder="Buscar nota, cliente, placa, motorista…" value={busca} onChange={(e) => setBusca(e.target.value)} style={{ minWidth: 240 }} />
+            <button className="btn link" onClick={atualizarNomes} disabled={atualizando || !lista.length}>{atualizando ? "Atualizando…" : "↻ nomes do frete"}</button>
+            <button className="btn link" onClick={exportar} disabled={!lista.length}>⭳ Excel (CSV)</button>
+          </div>
+        </div>
+        <div className="tabela-rolagem">
+          <table className="na">
+            <thead><tr><th>Nota fiscal</th><th>Pedido</th><th>Cliente</th><th>Placa</th><th>Saída</th><th>Motorista</th><th>Entregador</th><th className="n">Peso (kg)</th><th className="n">Valor</th><th>Roteirizado</th><th></th></tr></thead>
+            <tbody>
+              {lista.map((n) => (
+                <tr key={n.id}>
+                  <td className="ag-ped"><b>{n.numnota}</b></td>
+                  <td className="ag-ped">{n.numped || "—"}</td>
+                  <td className="ag-cli" title={n.cliente}>{n.cliente}</td>
+                  <td><span className="na-troca"><s>{n.placa_ficticia}</s> » <b>{n.placa}</b></span></td>
+                  <td>{dm(n.dt_saida)}</td>
+                  <td>{n.motorista || <span className="sub">—</span>}</td>
+                  <td>{n.entregador || <span className="sub">—</span>}</td>
+                  <td className="n">{n.peso != null ? num(n.peso) : "—"}</td>
+                  <td className="n">{n.valor != null ? moeda(n.valor) : "—"}</td>
+                  <td className="sub">{fmtDataHora(n.roteirizado_em)}{n.roteirizado_por ? ` · ${n.roteirizado_por}` : ""}</td>
+                  <td><button className="btn mini" onClick={() => devolver(n)} title="Voltar para pendente">↩ Devolver</button></td>
+                </tr>
+              ))}
+              {!lista.length && <tr><td colSpan={11} className="vazio">Nenhuma nota roteirizada com saída entre {dm(de)} e {dm(ate)}.</td></tr>}
+            </tbody>
+            {lista.length > 0 && <tfoot><tr><td colSpan={7}>TOTAL · {lista.length} nota(s)</td><td className="n">{num(t.peso)}</td><td className="n">{moeda(t.valor)}</td><td colSpan={2}></td></tr></tfoot>}
+          </table>
+        </div>
+      </section>
+
+      {grupos.length > 0 && (
+        <section className="cartao sem-pad">
+          <div className="barra-tabela"><b>Relatório por placa</b><span className="sub">{new Set(grupos.map((g) => g.placa)).size} placa(s)</span></div>
+          <div className="tabela-rolagem">
+            <table className="na">
+              <thead><tr><th>Saída</th><th>Placa</th><th>Motorista</th><th>Entregador</th><th className="n">Notas</th><th className="n">Clientes</th><th className="n">Peso (kg)</th><th className="n">Valor</th></tr></thead>
+              <tbody>
+                {grupos.map((g) => {
+                  const s = somar(g.notas);
+                  return (
+                    <tr key={g.k}>
+                      <td>{dm(g.dt_saida)}</td><td><b>{g.placa}</b></td><td>{g.motorista || "—"}</td><td>{g.entregador || "—"}</td>
+                      <td className="n">{g.notas.length}</td><td className="n">{g.clientes.size}</td><td className="n">{num(s.peso)}</td><td className="n">{moeda(s.valor)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+    </>
+  );
+}
