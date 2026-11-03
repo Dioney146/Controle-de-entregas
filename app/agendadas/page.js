@@ -5,6 +5,8 @@ import { sb, buscarTudo } from "../../lib/supabase";
 import { useTempoReal } from "../../lib/hooks";
 import { useUsuario } from "../../components/Casca";
 import { hojeISO, somarDias, fmtData, fmtDataHora, num, moeda, baixarCSV, normPlaca, lerNumeroBR } from "../../lib/util";
+import ComboBairro from "../../components/ComboBairro";
+import { BAIRROS_MANAUS } from "../../lib/bairros";
 import { lerColagem, nomesDoFrete, somar, buscarNaRoad, completarComRoad, PLACAS_FICTICIAS, CLIENTE_PADRAO } from "../../lib/notasAgendadas";
 
 // Notas agendadas: notas fiscais de agendamento (ex.: J A GOMES) faturadas em placa fictícia.
@@ -80,9 +82,10 @@ export default function NotasAgendadas() {
 function Adicionar({ email, hoje, existentes, clientes, aoAdicionar, aoErro }) {
   const [aberto, setAberto] = useState(true);
   const [modo, setModo] = useState("UMA");
-  const [cliente, setCliente] = useState(CLIENTE_PADRAO);
-  const [placaF, setPlacaF] = useState(PLACAS_FICTICIAS[0]);
-  const [destino, setDestino] = useState("AGEN JA");
+  const cliente = CLIENTE_PADRAO, placaF = PLACAS_FICTICIAS[0], destino = "AGEN JA"; // quando a nota não está na ROAD
+  const [bairro, setBairro] = useState("");             // digitar: bairro da nota
+  const [bairroTodas, setBairroTodas] = useState("");   // colar: bairro para todas
+  const [bairros, setBairros] = useState({});           // colar: bairro de cada nota (troca o de todas)
   const [nota, setNota] = useState(VAZIA);
   const [busca, setBusca] = useState({ nf: "", estado: "" }); // estado: buscando | achou | nao | erro
   const [texto, setTexto] = useState("");
@@ -90,11 +93,12 @@ function Adicionar({ email, hoje, existentes, clientes, aoAdicionar, aoErro }) {
   const [salvando, setSalvando] = useState(false);
 
   const padrao = { cliente: cliente.toUpperCase().trim(), placa_ficticia: normPlaca(placaF) || PLACAS_FICTICIAS[0], destino: destino.toUpperCase().trim() };
-  const leitura = useMemo(() => (texto.trim() ? lerColagem(texto, padrao) : null), [texto, cliente, placaF, destino]);
+  const leitura = useMemo(() => (texto.trim() ? lerColagem(texto, padrao) : null), [texto]);
   // notas coladas + o que veio da ROAD (o que foi colado tem prioridade; a ROAD completa o que faltar)
-  const coladas = (leitura?.notas || []).map((n) => completarComRoad(n, road.achadas[n.numnota], padrao));
+  const coladas = (leitura?.notas || []).map((n) => ({ ...completarComRoad(n, road.achadas[n.numnota], padrao), bairro: bairros[n.numnota] || n.bairro || bairroTodas }));
   const novas = coladas.filter((n) => !existentes.has(n.numnota));
   const repetidas = coladas.length - novas.length;
+  const semBairro = novas.filter((n) => !n.bairro).length;
   const nfDigitada = String(nota.numnota).replace(/\D/g, "");
 
   // ---- digitando: busca a nota na ROAD (ao parar de digitar, ao sair do campo ou no Enter) ----
@@ -114,6 +118,7 @@ function Adicionar({ email, hoje, existentes, clientes, aoAdicionar, aoErro }) {
         cliente: a.cliente, codcli: a.codcli, destino: a.destino, placa_road: a.placa_road,
       }));
       setBusca({ nf, estado: "achou", nota: a });
+      setTimeout(() => document.getElementById("na-bairro")?.focus(), 50);
       return a;
     } catch (e) {
       setBusca({ nf, estado: "erro", erro: e.message });
@@ -159,21 +164,23 @@ function Adicionar({ email, hoje, existentes, clientes, aoAdicionar, aoErro }) {
     // Enter logo depois de digitar: primeiro busca na ROAD e preenche; o próximo Enter adiciona
     if (busca.nf !== numnota) { await buscarUma(numnota); return; }
     if (busca.estado === "buscando") return;
-    const ok = await gravar([{
+    if (!BAIRROS_MANAUS.includes(bairro)) { document.getElementById("na-bairro")?.focus(); return aoErro("Selecione um Bairro da lista antes de salvar."); }
+    const ok = await gravar([{ bairro,
       numnota, numped: String(nota.numped).replace(/\D/g, ""), codcli: nota.codcli || "",
       cliente: (nota.cliente || padrao.cliente).toUpperCase(),
       valor: lerNumeroBR(nota.valor), peso: lerNumeroBR(nota.peso), carregamento: String(nota.carregamento).replace(/\D/g, ""),
       destino: (nota.destino || padrao.destino).toUpperCase(), placa_ficticia: normPlaca(nota.placa_road) || padrao.placa_ficticia, obs: nota.obs.trim(),
     }]);
     if (ok) {
-      aoAdicionar(`Nota ${numnota} adicionada${nota.cliente ? ` · ${nota.cliente}` : ""} em ${normPlaca(nota.placa_road) || padrao.placa_ficticia}.`);
-      setNota(VAZIA); setBusca({ nf: "", estado: "" });
+      aoAdicionar(`Nota ${numnota} adicionada${nota.cliente ? ` · ${nota.cliente}` : ""} · ${bairro} · em ${normPlaca(nota.placa_road) || padrao.placa_ficticia}.`);
+      setNota(VAZIA); setBusca({ nf: "", estado: "" }); setBairro("");
       document.getElementById("na-nf")?.focus();
     }
   }
   async function adicionarColadas() {
     if (!novas.length) return;
-    if (await gravar(novas)) { setTexto(""); aoAdicionar(`${novas.length} nota(s) adicionada(s)${repetidas ? ` · ${repetidas} já estavam cadastradas e foram ignoradas` : ""}.`); }
+    if (semBairro) return aoErro(`Falta o bairro de ${semBairro} nota(s): escolha o bairro para todas ou em cada linha.`);
+    if (await gravar(novas)) { setTexto(""); setBairros({}); setBairroTodas(""); aoAdicionar(`${novas.length} nota(s) adicionada(s)${repetidas ? ` · ${repetidas} já estavam cadastradas e foram ignoradas` : ""}.`); }
   }
 
   const achadasColadas = coladas.filter((n) => road.achadas[n.numnota]).length;
@@ -181,7 +188,7 @@ function Adicionar({ email, hoje, existentes, clientes, aoAdicionar, aoErro }) {
   return (
     <section className="cartao na-add">
       <div className="na-add-topo">
-        <b>Adicionar notas fiscais <small className="sub">· os dados vêm da base ROAD (a mesma do site de Reentregas)</small></b>
+        <b>Adicionar notas fiscais</b>
         <div className="linha-acoes">
           <button className={`btn mini ${modo === "UMA" ? "primario" : ""}`} onClick={() => { setModo("UMA"); setAberto(true); }}>Digitar</button>
           <button className={`btn mini ${modo === "COLAR" ? "primario" : ""}`} onClick={() => { setModo("COLAR"); setAberto(true); }}>Colar várias</button>
@@ -190,20 +197,6 @@ function Adicionar({ email, hoje, existentes, clientes, aoAdicionar, aoErro }) {
       </div>
       {aberto && (
         <>
-          <div className="na-padrao">
-            <label className="campo-data">Cliente
-              <input className="campo" list="na-clientes" value={cliente} onChange={(e) => setCliente(e.target.value)} style={{ minWidth: 240 }} />
-              <datalist id="na-clientes">{[CLIENTE_PADRAO, ...clientes.filter((c) => c !== CLIENTE_PADRAO)].map((c) => <option key={c} value={c} />)}</datalist>
-            </label>
-            <label className="campo-data">Placa fictícia
-              <input className="campo" list="na-ficticias" value={placaF} onChange={(e) => setPlacaF(e.target.value.toUpperCase())} style={{ width: 120 }} />
-              <datalist id="na-ficticias">{PLACAS_FICTICIAS.map((p) => <option key={p} value={p} />)}</datalist>
-            </label>
-            <label className="campo-data">Destino
-              <input className="campo" value={destino} onChange={(e) => setDestino(e.target.value)} style={{ width: 140 }} />
-            </label>
-            <span className="sub">usados só quando a nota não estiver na ROAD (ou a ROAD não trouxer o dado)</span>
-          </div>
           {modo === "UMA" ? (
             <>
               <form className="na-form" onSubmit={adicionarUma}>
@@ -216,23 +209,26 @@ function Adicionar({ email, hoje, existentes, clientes, aoAdicionar, aoErro }) {
                 <label className="campo-data">Valor (R$)<input className="campo" inputMode="decimal" value={nota.valor} onChange={(e) => setNota({ ...nota, valor: e.target.value })} placeholder="0,00" style={{ width: 110 }} /></label>
                 <label className="campo-data">Peso (kg)<input className="campo" inputMode="decimal" value={nota.peso} onChange={(e) => setNota({ ...nota, peso: e.target.value })} placeholder="0,000" style={{ width: 100 }} /></label>
                 <label className="campo-data">Carregamento<input className="campo" inputMode="numeric" value={nota.carregamento} onChange={(e) => setNota({ ...nota, carregamento: e.target.value })} style={{ width: 120 }} /></label>
-                <label className="campo-data">Obs<input className="campo" value={nota.obs} onChange={(e) => setNota({ ...nota, obs: e.target.value })} style={{ minWidth: 160 }} /></label>
-                <button className="btn primario" disabled={salvando || busca.estado === "buscando"}>{salvando ? "Salvando…" : "＋ Adicionar"}</button>
+                <label className="campo-data na-bairro">Bairro *
+                  <ComboBairro id="na-bairro" valor={bairro} aoMudar={setBairro} aoEscolher={() => setTimeout(() => document.getElementById("na-salvar")?.focus(), 30)} />
+                </label>
+                <label className="campo-data">Obs<input className="campo" value={nota.obs} onChange={(e) => setNota({ ...nota, obs: e.target.value })} style={{ minWidth: 140 }} /></label>
+                <button id="na-salvar" className="btn primario" disabled={salvando || busca.estado === "buscando"}>{salvando ? "Salvando…" : "＋ Adicionar"}</button>
               </form>
               <div className={`na-road na-road-${busca.nf === nfDigitada ? busca.estado : ""}`}>
                 {!nfDigitada ? <span className="sub">Digite a nota fiscal: pedido, cliente, valor, peso e carregamento são preenchidos pela ROAD.</span>
                   : existentes.has(nfDigitada) ? <span className="t-laranja">A nota {nfDigitada} já está cadastrada nesta aba.</span>
                   : busca.nf !== nfDigitada ? <span className="sub">aperte Enter ou espere para buscar na ROAD…</span>
                   : busca.estado === "buscando" ? <span className="sub">🔎 buscando a nota {nfDigitada} na ROAD…</span>
-                  : busca.estado === "achou" ? <span>✔ Encontrada na ROAD: <b>{busca.nota.cliente || "—"}</b>{busca.nota.placa_road ? <> · placa <b>{busca.nota.placa_road}</b></> : ""}{busca.nota.destino ? ` · ${busca.nota.destino}` : ""}{busca.nota.dt_liberado ? ` · liberado ${dm(busca.nota.dt_liberado)}` : ""} <small className="sub">— confira e aperte Enter (ou ＋ Adicionar)</small></span>
-                  : busca.estado === "nao" ? <span className="t-laranja">Nota {nfDigitada} não encontrada na ROAD — preencha os campos à mão (usa o cliente, placa e destino acima).</span>
+                  : busca.estado === "achou" ? <span>✔ Encontrada na ROAD: <b>{busca.nota.cliente || "—"}</b>{busca.nota.placa_road ? <> · placa <b>{busca.nota.placa_road}</b></> : ""}{busca.nota.destino ? ` · ${busca.nota.destino}` : ""}{busca.nota.dt_liberado ? ` · liberado ${dm(busca.nota.dt_liberado)}` : ""} <small className="sub">— escolha o bairro e clique em ＋ Adicionar</small></span>
+                  : busca.estado === "nao" ? <span className="t-laranja">Nota {nfDigitada} não encontrada na ROAD — preencha os campos à mão, escolha o bairro e adicione.</span>
                   : <span className="t-vermelho">Não deu para consultar a ROAD: {busca.erro}</span>}
               </div>
             </>
           ) : (
             <>
               <textarea className="colar" rows={5} value={texto} onChange={(e) => setTexto(e.target.value)}
-                placeholder={"Cole os números das notas fiscais (um por linha) — o resto vem da ROAD.\nTambém aceita colar do Excel/Winthor com cabeçalho (NUMNOTA, NUMPED, CLIENTE, VLTOTAL, PESOBRUTOTOT, NUMCARREGAMENTO…)."} />
+                placeholder={"Cole os números das notas fiscais (um por linha) — o resto vem da ROAD.\nTambém aceita colar do Excel/Winthor com cabeçalho (NUMNOTA, NUMPED, CLIENTE, VLTOTAL, PESOBRUTOTOT, NUMCARREGAMENTO, BAIRRO…)."} />
               <div className="linha-acoes">
                 {leitura && (leitura.erro ? <span className="t-vermelho">{leitura.erro}</span> : (
                   <span>
@@ -243,16 +239,26 @@ function Adicionar({ email, hoje, existentes, clientes, aoAdicionar, aoErro }) {
                     {repetidas > 0 && <b className="t-laranja"> · {repetidas} já cadastrada(s)</b>}
                   </span>
                 ))}
+                <label className="campo-data na-bairro">Bairro (para todas)
+                  <ComboBairro valor={bairroTodas} aoMudar={setBairroTodas} />
+                </label>
+                {semBairro > 0 && novas.length > 0 && <span className="t-laranja">{semBairro} sem bairro</span>}
                 <button className="btn primario" disabled={!novas.length || salvando || road.estado === "buscando"} onClick={adicionarColadas}>{salvando ? "Salvando…" : `＋ Adicionar ${novas.length || ""} nota(s)`}</button>
               </div>
               {coladas.length > 0 && road.estado === "ok" && (
                 <div className="tabela-rolagem na-previa">
                   <table className="na">
-                    <thead><tr><th>Nota fiscal</th><th>Pedido</th><th>Cliente</th><th>Placa</th><th>Carreg.</th><th className="n">Peso (kg)</th><th className="n">Valor</th><th></th></tr></thead>
+                    <thead><tr><th>Nota fiscal</th><th>Pedido</th><th>Cliente</th><th>Bairro</th><th>Placa</th><th>Carreg.</th><th className="n">Peso (kg)</th><th className="n">Valor</th><th></th></tr></thead>
                     <tbody>
                       {coladas.slice(0, 200).map((n) => (
                         <tr key={n.numnota} className={existentes.has(n.numnota) ? "na-repetida" : ""}>
                           <td className="ag-ped"><b>{n.numnota}</b></td><td className="ag-ped">{n.numped || "—"}</td><td className="ag-cli">{n.cliente}</td>
+                          <td>
+                            <select className={`campo mini ${n.bairro ? "" : "na-falta"}`} value={n.bairro} onChange={(e) => setBairros({ ...bairros, [n.numnota]: e.target.value })} disabled={existentes.has(n.numnota)}>
+                              <option value="">— bairro —</option>
+                              {BAIRROS_MANAUS.map((b) => <option key={b}>{b}</option>)}
+                            </select>
+                          </td>
                           <td>{n.placa_ficticia}</td><td>{n.carregamento || "—"}</td>
                           <td className="n">{n.peso != null ? num(n.peso) : "—"}</td><td className="n">{n.valor != null ? moeda(n.valor) : "—"}</td>
                           <td className="sub">{existentes.has(n.numnota) ? "já cadastrada" : road.achadas[n.numnota] ? "ROAD" : "não achada"}</td>
@@ -288,7 +294,7 @@ function Pendentes({ pend, hoje, email, placasCad, carregando, aviso, recarregar
   }, [dtSaida]);
 
   const b = busca.trim().toUpperCase();
-  const lista = pend.filter((n) => !b || [n.numnota, n.numped, n.cliente, n.placa_ficticia, n.destino, n.carregamento, n.obs].some((x) => String(x || "").toUpperCase().includes(b)));
+  const lista = pend.filter((n) => !b || [n.numnota, n.numped, n.cliente, n.bairro, n.placa_ficticia, n.destino, n.carregamento, n.obs].some((x) => String(x || "").toUpperCase().includes(b)));
   const sel = lista.filter((n) => marcadas.has(n.id));
   const tS = somar(sel);
   const todas = lista.length > 0 && lista.every((n) => marcadas.has(n.id));
@@ -340,7 +346,7 @@ function Pendentes({ pend, hoje, email, placasCad, carregando, aviso, recarregar
         <table className="na">
           <thead><tr>
             <th className="na-ck"><input type="checkbox" checked={todas} onChange={() => setMarcadas(todas ? new Set() : new Set(lista.map((n) => n.id)))} title="Marcar todas" /></th>
-            <th>Nota fiscal</th><th>Pedido</th><th>Cliente</th><th>Placa fictícia</th><th>Destino</th><th>Carreg.</th><th>Registro</th><th className="n">Dias</th><th className="n">Peso (kg)</th><th className="n">Valor</th><th>Obs</th><th></th>
+            <th>Nota fiscal</th><th>Pedido</th><th>Cliente</th><th>Bairro</th><th>Placa fictícia</th><th>Destino</th><th>Carreg.</th><th>Registro</th><th className="n">Dias</th><th className="n">Peso (kg)</th><th className="n">Valor</th><th>Obs</th><th></th>
           </tr></thead>
           <tbody>
             {lista.map((n) => (
@@ -349,6 +355,7 @@ function Pendentes({ pend, hoje, email, placasCad, carregando, aviso, recarregar
                 <td className="ag-ped"><b>{n.numnota}</b></td>
                 <td className="ag-ped">{n.numped || "—"}</td>
                 <td className="ag-cli" title={n.cliente}>{n.cliente}</td>
+                <td>{n.bairro || <span className="sub">—</span>}</td>
                 <td><span className="na-fict">{n.placa_ficticia}</span></td>
                 <td>{n.destino}</td>
                 <td>{n.carregamento || "—"}</td>
@@ -360,9 +367,9 @@ function Pendentes({ pend, hoje, email, placasCad, carregando, aviso, recarregar
                 <td className="na-x" onClick={(e) => e.stopPropagation()}><button className="btn-x" onClick={() => excluir(n)} title="Excluir nota">✕</button></td>
               </tr>
             ))}
-            {!lista.length && <tr><td colSpan={13} className="vazio">{carregando ? "Carregando…" : b ? "Nenhuma nota com essa busca." : "Nenhuma nota pendente. 👍"}</td></tr>}
+            {!lista.length && <tr><td colSpan={14} className="vazio">{carregando ? "Carregando…" : b ? "Nenhuma nota com essa busca." : "Nenhuma nota pendente. 👍"}</td></tr>}
           </tbody>
-          {lista.length > 0 && <tfoot><tr><td colSpan={9}>TOTAL · {lista.length} nota(s)</td><td className="n">{num(somar(lista).peso)}</td><td className="n">{moeda(somar(lista).valor)}</td><td colSpan={2}></td></tr></tfoot>}
+          {lista.length > 0 && <tfoot><tr><td colSpan={10}>TOTAL · {lista.length} nota(s)</td><td className="n">{num(somar(lista).peso)}</td><td className="n">{moeda(somar(lista).valor)}</td><td colSpan={2}></td></tr></tfoot>}
         </table>
       </div>
 
@@ -453,8 +460,8 @@ function Roteirizadas({ rote, de, ate, setDe, setAte, hoje, aviso, recarregar })
     recarregar();
   }
   function exportar() {
-    baixarCSV(`notas_agendadas_${de}_a_${ate}.csv`, ["NOTA FISCAL", "PEDIDO", "CLIENTE", "PLACA FICTICIA", "NOVA PLACA", "DATA SAIDA", "MOTORISTA", "ENTREGADOR", "DESTINO", "CARREGAMENTO", "PESO", "VALOR", "ROTEIRIZADO POR"],
-      lista.map((n) => [n.numnota, n.numped, n.cliente, n.placa_ficticia, n.placa, fmtData(n.dt_saida), n.motorista, n.entregador, n.destino, n.carregamento, br(n.peso), br(n.valor), n.roteirizado_por || ""]));
+    baixarCSV(`notas_agendadas_${de}_a_${ate}.csv`, ["NOTA FISCAL", "PEDIDO", "CLIENTE", "BAIRRO", "PLACA FICTICIA", "NOVA PLACA", "DATA SAIDA", "MOTORISTA", "ENTREGADOR", "DESTINO", "CARREGAMENTO", "PESO", "VALOR", "ROTEIRIZADO POR"],
+      lista.map((n) => [n.numnota, n.numped, n.cliente, n.bairro || "", n.placa_ficticia, n.placa, fmtData(n.dt_saida), n.motorista, n.entregador, n.destino, n.carregamento, br(n.peso), br(n.valor), n.roteirizado_por || ""]));
   }
 
   return (
@@ -472,13 +479,14 @@ function Roteirizadas({ rote, de, ate, setDe, setAte, hoje, aviso, recarregar })
         </div>
         <div className="tabela-rolagem">
           <table className="na">
-            <thead><tr><th>Nota fiscal</th><th>Pedido</th><th>Cliente</th><th>Placa</th><th>Saída</th><th>Motorista</th><th>Entregador</th><th className="n">Peso (kg)</th><th className="n">Valor</th><th>Roteirizado</th><th></th></tr></thead>
+            <thead><tr><th>Nota fiscal</th><th>Pedido</th><th>Cliente</th><th>Bairro</th><th>Placa</th><th>Saída</th><th>Motorista</th><th>Entregador</th><th className="n">Peso (kg)</th><th className="n">Valor</th><th>Roteirizado</th><th></th></tr></thead>
             <tbody>
               {lista.map((n) => (
                 <tr key={n.id}>
                   <td className="ag-ped"><b>{n.numnota}</b></td>
                   <td className="ag-ped">{n.numped || "—"}</td>
                   <td className="ag-cli" title={n.cliente}>{n.cliente}</td>
+                  <td>{n.bairro || <span className="sub">—</span>}</td>
                   <td><span className="na-troca"><s>{n.placa_ficticia}</s> » <b>{n.placa}</b></span></td>
                   <td>{dm(n.dt_saida)}</td>
                   <td>{n.motorista || <span className="sub">—</span>}</td>
@@ -489,9 +497,9 @@ function Roteirizadas({ rote, de, ate, setDe, setAte, hoje, aviso, recarregar })
                   <td><button className="btn mini" onClick={() => devolver(n)} title="Voltar para pendente">↩ Devolver</button></td>
                 </tr>
               ))}
-              {!lista.length && <tr><td colSpan={11} className="vazio">Nenhuma nota roteirizada com saída entre {dm(de)} e {dm(ate)}.</td></tr>}
+              {!lista.length && <tr><td colSpan={12} className="vazio">Nenhuma nota roteirizada com saída entre {dm(de)} e {dm(ate)}.</td></tr>}
             </tbody>
-            {lista.length > 0 && <tfoot><tr><td colSpan={7}>TOTAL · {lista.length} nota(s)</td><td className="n">{num(t.peso)}</td><td className="n">{moeda(t.valor)}</td><td colSpan={2}></td></tr></tfoot>}
+            {lista.length > 0 && <tfoot><tr><td colSpan={8}>TOTAL · {lista.length} nota(s)</td><td className="n">{num(t.peso)}</td><td className="n">{moeda(t.valor)}</td><td colSpan={2}></td></tr></tfoot>}
           </table>
         </div>
       </section>

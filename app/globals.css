@@ -711,3 +711,11 @@ table.na td.ag-cli { max-width: 260px; overflow: hidden; text-overflow: ellipsis
 .na-road.na-road-nao { background: #fff6ea; }
 .na-previa { max-height: 260px; overflow-y: auto; border: 1px solid var(--borda); border-radius: 6px; }
 table.na tr.na-repetida td { color: #98a2b3; text-decoration: line-through; }
+.na-bairro .combo { position: relative; width: 240px; }
+.na-bairro .combo .campo { width: 100%; }
+.combo-lista { position: absolute; z-index: 30; left: 0; right: 0; top: calc(100% + 2px); max-height: 240px; overflow-y: auto; background: #fff; border: 1px solid var(--borda); border-radius: 8px; box-shadow: 0 8px 24px rgba(19, 38, 59, .15); padding: 4px; }
+.combo-item { padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: .84rem; color: #13263b; }
+.combo-item:hover, .combo-item.sel { background: #e8edf3; }
+.campo.combo-ok { border-color: var(--verde); background: var(--verde-fundo); }
+select.campo.mini { padding: 2px 6px; font-size: .78rem; height: 26px; }
+select.campo.na-falta { border-color: #f59e0b; background: #fff8eb; }

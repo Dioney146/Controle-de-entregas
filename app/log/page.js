@@ -17,7 +17,7 @@ const CAMPO = {
   entregas: "Entregas", destino: "Infor", obs: "Obs", kg: "KG", valor: "Valor", transportadora: "Transportadora",
   tipo: "Tipo", nome: "Nome", funcao: "Função", ativo: "Ativo", ordem: "Ordem", data: "Data", placa: "Placa",
   registros: "Registros", motivo: "Motivo da exclusão",
-  numnota: "Nota fiscal", dt_saida: "Data de saída", placa_ficticia: "Placa fictícia", cliente: "Cliente", peso: "Peso",
+  numnota: "Nota fiscal", dt_saida: "Data de saída", placa_ficticia: "Placa fictícia", cliente: "Cliente", peso: "Peso", bairro: "Bairro",
 };
 const STATUS = { PROGRAMADO: "A sair", EM_ROTA: "Saiu", RETORNOU: "Retornou", PENDENTE: "Pendente", ROTEIRIZADO: "Roteirizado" };
 const ESCONDER = new Set(["arquivado_em", "arquivado_por", "ordem", "liberado_retorno_em", "liberado_retorno_por", "adicionado_por", "placa_original", "placa_trocada_por", "placa_trocada_em", "roteirizado_em", "roteirizado_por", "registrado_por"]); // detalhes repetidos
