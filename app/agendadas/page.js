@@ -48,8 +48,6 @@ export default function NotasAgendadas() {
   useEffect(() => { carregar(); }, [de, ate]);
   useTempoReal(carregar, [de, ate]);
 
-  const tP = somar(pend), tR = somar(rote);
-  const placasRote = new Set(rote.map((n) => n.placa)).size;
 
   return (
     <>
@@ -59,12 +57,6 @@ export default function NotasAgendadas() {
 
       {semTabela && <div className="alerta aviso">Rode o arquivo <b>18_notas_agendadas.sql</b> no Supabase (SQL Editor › Run) para ativar esta aba.</div>}
       {msg && <div className={`alerta ${msg.tipo}`} onClick={() => setMsg(null)}>{msg.txt}</div>}
-
-      <section className="ag-funil na-kpis">
-        <div className="ag-etapa na-kpi-pend"><span>Pendentes (placa fictícia)</span><b>{tP.qtd} <small>notas</small></b><em className="ag-valor">{moeda(tP.valor)}</em><em>{num(tP.peso)} kg · {new Set(pend.map((n) => n.cliente)).size} cliente(s)</em></div>
-        <div className="ag-etapa na-kpi-rote"><span>Roteirizadas · saída {dm(de)} a {dm(ate)}</span><b>{tR.qtd} <small>notas</small></b><em className="ag-valor">{moeda(tR.valor)}</em><em>{num(tR.peso)} kg · {placasRote} placa(s)</em></div>
-        <div className="ag-etapa na-kpi-sem"><span>Roteirizadas sem motorista</span><b>{rote.filter((n) => !n.motorista).length} <small>notas</small></b><em>placa ainda não está no frete do dia</em></div>
-      </section>
 
       <Adicionar email={email} hoje={hoje} existentes={new Set([...pend, ...rote].map((n) => n.numnota))} clientes={[...new Set([...pend, ...rote].map((n) => n.cliente).filter(Boolean))]}
         aoAdicionar={(t) => { setMsg({ tipo: "ok", txt: t }); carregar(); }} aoErro={(t) => setMsg({ tipo: "erro", txt: t })} />
