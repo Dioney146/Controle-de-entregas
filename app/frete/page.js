@@ -11,7 +11,7 @@ import { useFiltros, ThFiltro } from "../../components/FiltroColuna";
 import SeletorPessoa, { usePessoas } from "../../components/SeletorPessoa";
 import MotivoExclusao from "../../components/MotivoExclusao";
 import { useUsuario } from "../../components/Casca";
-import { fmtData, fmtDataHora, horaInput, horaParaTimestamp, num, moeda, normPlaca, corTrans, lerNumeroBR } from "../../lib/util";
+import { fmtData, fmtDataHora, fmtHora, horaInput, horaParaTimestamp, num, moeda, normPlaca, corTrans, lerNumeroBR } from "../../lib/util";
 import MarcaManual from "../../components/MarcaManual";
 import MarcaTroca from "../../components/MarcaTroca";
 
@@ -333,15 +333,16 @@ export default function Frete() {
                 <tr>
                   <ThFiltro f={f} col="data" linhas={linhas} className="col-data">Data</ThFiltro>
                   <ThFiltro f={f} col="zona" linhas={linhas} className="col-zona">Zona</ThFiltro>
-                  <ThFiltro f={f} col="placa" linhas={linhas}>Placa</ThFiltro>
-                  <ThFiltro f={f} col="trans" linhas={linhas}>Trans</ThFiltro>
-                  <ThFiltro f={f} col="ent" linhas={linhas} className="n">Ent.</ThFiltro>
-                  <ThFiltro f={f} col="kg" linhas={linhas} className="n">KG</ThFiltro>
-                  <ThFiltro f={f} col="motorista" linhas={linhas} className="col-nome">Motorista</ThFiltro>
-                  <ThFiltro f={f} col="entregador" linhas={linhas} className="col-nome">Entregadores</ThFiltro>
-                  <ThFiltro f={f} col="infor" linhas={linhas}>Infor</ThFiltro>
-                  <ThFiltro f={f} col="valor" linhas={linhas} className="n">Valor</ThFiltro>
-                  <ThFiltro f={f} col="saida" linhas={linhas}>Saída</ThFiltro>
+                  <ThFiltro f={f} col="placa" linhas={linhas} className="c-placa">Placa</ThFiltro>
+                  <ThFiltro f={f} col="trans" linhas={linhas} className="c-trans">Trans</ThFiltro>
+                  <ThFiltro f={f} col="ent" linhas={linhas} className="n c-ent">Ent.</ThFiltro>
+                  <ThFiltro f={f} col="kg" linhas={linhas} className="n c-kg">KG</ThFiltro>
+                  <ThFiltro f={f} col="motorista" linhas={linhas} className="col-nome c-mot">Motorista</ThFiltro>
+                  <ThFiltro f={f} col="entregador" linhas={linhas} className="col-nome c-entr">Entregadores</ThFiltro>
+                  <ThFiltro f={f} col="infor" linhas={linhas} className="c-infor">Infor</ThFiltro>
+                  <ThFiltro f={f} col="valor" linhas={linhas} className="n c-valor">Valor</ThFiltro>
+                  <ThFiltro f={f} col="saida" linhas={linhas} className="c-saida">Saída</ThFiltro>
+                  <th className="so-imprimir-cel c-ret">Retorno</th>
                   <ThFiltro f={f} col="status" linhas={linhas} className="nao-imprimir">Status</ThFiltro>
                   <th className="nao-imprimir"></th>
                 </tr>
@@ -359,7 +360,7 @@ export default function Frete() {
                       : num(l.kg)}</td>
                     <td className="col-nome"><SeletorPessoa lista={pessoas} funcao="MOTORISTA" valor={l.motorista} placeholder="motorista…" aoSalvar={(v) => atualizar(l.id, { motorista: v })} /></td>
                     <td className="col-nome"><SeletorPessoa lista={pessoas} funcao="ENTREGADOR" multiplo valor={l.entregador} placeholder="entregador…" aoSalvar={(v) => atualizar(l.id, { entregador: v })} /></td>
-                    <td><CampoEditavel valor={l.destino} largura="12em" aoSalvar={(v) => atualizar(l.id, { destino: v })} /></td>
+                    <td className="c-infor"><CampoEditavel valor={l.destino} largura="12em" aoSalvar={(v) => atualizar(l.id, { destino: v })} /></td>
                     <td className="n">{editaPesoValor(l)
                       ? <CampoEditavel tipo="decimal" valor={l.valor} largura="7em" className="n" placeholder="valor R$" aoSalvar={(v) => atualizar(l.id, { valor: v })} />
                       : moeda(l.valor)}</td>
@@ -368,6 +369,7 @@ export default function Frete() {
                       <span className="so-imprimir">{horaInput(l.hora_saida)}</span>
                       {l.status === "PROGRAMADO" && <button className="btn mini nao-imprimir" onClick={() => saiuAgora(l)}>Saiu</button>}
                     </div></td>
+                    <td className="so-imprimir-cel c-ret">{l.checkout_em ? fmtHora(l.checkout_em) : ""}</td>
                     <td className="nao-imprimir">{l.arquivado ? <span className="status s-ARQ" title={`Enviado ${l.arquivado_por ? "por " + l.arquivado_por : ""}`}>✓ Histórico</span> : <span className={`status s-${l.status}`}>{ROTULO[l.status]}</span>}</td>
                     <td className="nao-imprimir">
                       {l.status === "PROGRAMADO"
@@ -382,7 +384,7 @@ export default function Frete() {
                   <td colSpan={2} className="nao-imprimir">TOTAL · {exibidas.length} veículos</td>
                   <td colSpan={2}><span className="so-imprimir">TOTAL · {exibidas.length} veículos</span></td>
                   <td className="n">{num(somaVis("entregas"))}</td><td className="n">{num(somaVis("kg"))}</td>
-                  <td colSpan={3}></td><td className="n">{moeda(somaVis("valor"))}</td><td></td>
+                  <td colSpan={3}></td><td className="n">{moeda(somaVis("valor"))}</td><td></td><td className="so-imprimir-cel"></td>
                   <td className="nao-imprimir" colSpan={2}></td>
                 </tr>
               </tfoot>

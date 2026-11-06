@@ -754,3 +754,30 @@ table.ind-tab .n { text-align: right; }
 .ind-nota { margin-top: 10px; font-size: .76rem; }
 @media (max-width: 1100px) { .ind-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } .ind-grade { grid-template-columns: 1fr; } }
 @media (max-width: 600px) { .ind-cards { grid-template-columns: 1fr; } .ind-b100 { grid-template-columns: 60px minmax(0, 1fr) 90px; } }
+
+/* ---------- Frete: impressão com coluna Retorno e tudo dentro da folha ---------- */
+.so-imprimir-cel { display: none; }
+@media print {
+  table.frete .so-imprimir-cel { display: table-cell !important; }
+  /* larguras fixas que somam 100% da folha (Data e Zona não saem na impressão) */
+  table.frete { table-layout: fixed !important; width: 100% !important; }
+  table.frete .c-placa { width: 7.5% !important; }
+  table.frete .c-trans { width: 8% !important; }
+  table.frete .c-ent { width: 4.5% !important; }
+  table.frete .c-kg { width: 5% !important; }
+  table.frete .c-mot { width: 15.5% !important; }
+  table.frete .c-entr { width: 21% !important; }
+  table.frete .c-infor { width: 13.5% !important; }
+  table.frete .c-valor { width: 9% !important; }
+  table.frete .c-saida { width: 7.5% !important; }
+  table.frete .c-ret { width: 8.5% !important; }
+  table.frete th, table.frete td { overflow: hidden !important; text-overflow: ellipsis; }
+  table.frete td * { max-width: 100% !important; min-width: 0 !important; }
+  table.frete .campo-ed, table.frete input { width: 100% !important; }
+  table.frete .placa-box, table.frete .saida-box { overflow: hidden; }
+  .titulo-impressao, .cartao, .tabela-rolagem { width: 100% !important; max-width: 100% !important; }
+  /* nomes compridos quebram em até 2 linhas (fonte um pouco menor) em vez de serem cortados */
+  table.frete td.col-nome, table.frete td.c-infor { white-space: normal !important; font-size: .85em; line-height: 1.05; }
+  table.frete td.col-nome *, table.frete td.c-infor * { white-space: normal !important; overflow: visible !important; text-overflow: clip !important; }
+  table.frete th.c-ent { padding: 0 2px !important; text-overflow: clip !important; }
+}
