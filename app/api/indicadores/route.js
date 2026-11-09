@@ -35,7 +35,7 @@ export async function GET(req) {
     reentregas = tr.value.json.linhas
       .map((l) => ({
         data: iso(l.dt_transferencia) || iso(l.criado_em),
-        numnota: String(l.numnota || "").trim(), numped: String(l.numped || "").trim(),
+        numnota: String(l.numnota || "").trim(), numped: String(l.numped || "").trim(), codcli: String(l.codcliente || "").replace(/\.0+$/, "").trim(),
         cliente: String(l.nomecliente || "").toUpperCase(), valor: num(l.vltotal), peso: num(l.pesobrutotot),
         motivo: String(l.motivo || "").toUpperCase().trim(), placa: placa(l.placa_road),
         status: String(l.status || ""), bairro: l.bairro || "",

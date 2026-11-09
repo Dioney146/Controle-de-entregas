@@ -34,7 +34,8 @@ function somarNotas(lista, chave) {
   return t;
 }
 const chaveDev = (l) => l.nota_venda || l.nota_devolucao;
-const chaveRe = (l) => l.numnota || l.numped;
+// reentregas contam CLIENTES (código do cliente) por dia, não notas: um cliente com 5 NFs é 1 reentrega
+const chaveRe = (l) => `${l.data}|${l.codcli || l.cliente || l.numnota || l.numped}`;
 
 function inicioDoMes(iso) { return `${iso.slice(0, 8)}01`; }
 
@@ -165,10 +166,11 @@ export default function Indicadores() {
         {ORDEM.map((k) => (
           <div key={k} className="ind-card" style={{ borderTopColor: CAT[k].cor }}>
             <span className="ind-rot"><i style={{ background: CAT[k].cor }} />{CAT[k].rot}</span>
-            <b>{fpct(tot[k][metrica], prog[metrica])} <small>{METRICAS[metrica].toLowerCase()}</small></b>
+            <b>{fpct(tot[k][metrica], prog[metrica])} <small>{metrica === "pedidos" && k === "REENTREGA" ? "clientes" : METRICAS[metrica].toLowerCase()}</small></b>
+            {k === "REENTREGA" && <small className="sub">{rees.length} nota(s) fiscal(is) de {num(tR.pedidos)} cliente(s)</small>}
             <table className="ind-mini">
               <tbody>
-                <tr><td>Pedidos</td><td className="n">{num(tot[k].pedidos)}</td><td className="n">{fpct(tot[k].pedidos, prog.pedidos)}</td></tr>
+                <tr><td>{k === "REENTREGA" ? "Clientes" : "Pedidos"}</td><td className="n">{num(tot[k].pedidos)}</td><td className="n">{fpct(tot[k].pedidos, prog.pedidos)}</td></tr>
                 <tr><td>Valor</td><td className="n">{moeda(tot[k].valor)}</td><td className="n">{fpct(tot[k].valor, prog.valor)}</td></tr>
                 <tr><td>Peso</td><td className="n">{num(tot[k].peso)} kg</td><td className="n">{fpct(tot[k].peso, prog.peso)}</td></tr>
               </tbody>
@@ -221,13 +223,13 @@ export default function Indicadores() {
         </section>
       </div>
 
-      <TabelaCargas titulo="Cargas com mais reentregas" cor={CAT.REENTREGA.cor} cargas={cargasRe} rotulo="Reentregas" chave={chaveRe} />
+      <TabelaCargas titulo="Cargas com mais reentregas" cor={CAT.REENTREGA.cor} cargas={cargasRe} rotulo="Clientes reentrega" unidade="cliente(s)" chave={chaveRe} />
       <TabelaCargas titulo="Cargas com mais devoluções" cor={CAT.DEVOLVIDO.cor} cargas={cargasDev} rotulo="Devoluções" chave={chaveDev} devolucao />
 
       <p className="sub ind-nota">
-        Programado = veículos do Frete / Saídas no período (pedidos = entregas da programação). Reentregas = notas registradas no site de
-        Transferências pela data do registro. Devoluções = notas do site de Devoluções pela {baseDev === "dt_entrega" ? "data de entrega" : "data de entrada"}.
-        Cada nota conta como um pedido. Entregue = programado − reentregas − devolvidos.
+        Programado = veículos do Frete / Saídas no período (pedidos = entregas da programação). Reentregas = clientes (pelo código do cliente) com notas registradas no site de
+        Transferências, por dia de registro — um cliente com várias NFs no mesmo dia conta uma vez. Devoluções = notas do site de Devoluções pela {baseDev === "dt_entrega" ? "data de entrega" : "data de entrada"}.
+        Cada nota de venda devolvida conta como um pedido. Entregue = programado − reentregas − devolvidos.
       </p>
     </>
   );
@@ -322,7 +324,7 @@ function porCarga(lista, saidas, chave, placasDe) {
   }).sort((a, b) => b.pedidos - a.pedidos || b.valor - a.valor);
 }
 
-function TabelaCargas({ titulo, cor, cargas, rotulo, chave, devolucao }) {
+function TabelaCargas({ titulo, cor, cargas, rotulo, chave, devolucao, unidade = "nota(s)" }) {
   const [aberta, setAberta] = useState(null);
   const [todas, setTodas] = useState(false);
   const lista = todas ? cargas : cargas.slice(0, 15);
@@ -331,7 +333,7 @@ function TabelaCargas({ titulo, cor, cargas, rotulo, chave, devolucao }) {
     <section className="cartao sem-pad ind-cargas" style={{ borderTopColor: cor }}>
       <div className="barra-tabela">
         <div className="ind-tit" style={{ margin: 0 }}><span className="ind-rot"><i style={{ background: cor }} /></span><b>{titulo}</b>
-          <span className="sub">{cargas.length} carga(s) · {tot.pedidos} nota(s) · {moeda(tot.valor)} · clique numa carga para ver as notas</span></div>
+          <span className="sub">{cargas.length} carga(s) · {tot.pedidos} {unidade}{devolucao ? "" : ` (${cargas.reduce((n, c) => n + c.notas.length, 0)} NFs)`} · {moeda(tot.valor)} · clique numa carga para ver as notas</span></div>
       </div>
       {!cargas.length ? <div className="vazio">Nenhuma {devolucao ? "devolução" : "reentrega"} no período.</div> : (
         <div className="tabela-rolagem">
