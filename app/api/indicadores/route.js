@@ -39,6 +39,7 @@ export async function GET(req) {
         cliente: String(l.nomecliente || "").toUpperCase(), valor: num(l.vltotal), peso: num(l.pesobrutotot),
         motivo: String(l.motivo || "").toUpperCase().trim(), placa: placa(l.placa_road),
         status: String(l.status || ""), bairro: l.bairro || "",
+        motorista: String(l.motorista || "").toUpperCase(), entregador: String(l.entregador || "").toUpperCase(),
       }))
       .filter((l) => dentro(l.data));
   } else {
@@ -54,6 +55,9 @@ export async function GET(req) {
         cliente: String(l.cliente || "").toUpperCase(), valor: num(l.valor), peso: num(l.peso),
         motivo: String(l.motivo || "").toUpperCase().trim(), placa: placa(l.placa),
         transportadora: String(l.transportadora || "").toUpperCase(),
+        placa_retorno: placa(l.placa_retorno), destino: String(l.destino || "").toUpperCase(),
+        motorista: /NÃO IDENT/.test(l.motorista || "") ? "" : String(l.motorista || "").toUpperCase(),
+        entregador: /NÃO IDENT/.test(l.entregador || "") ? "" : String(l.entregador || "").toUpperCase(),
       }))
       .filter((l) => dentro(l.dt_entrada) || dentro(l.dt_entrega));
   } else {

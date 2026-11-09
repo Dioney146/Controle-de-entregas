@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { sb, buscarTudo } from "../../lib/supabase";
 import { useUsuario } from "../../components/Casca";
 import { hojeISO, somarDias, fmtData, num, moeda, normPlaca } from "../../lib/util";
@@ -50,18 +50,21 @@ export default function Indicadores() {
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
 
+  const ultimaBusca = useRef(0);
   async function carregar() {
     if (!de || !ate || de > ate) return;
+    const minha = ++ultimaBusca.current; // ao trocar a data rápido, só vale a resposta da última busca
     setCarregando(true); setErro("");
     try {
       const [s, r] = await Promise.all([
-        buscarTudo(() => sb().from("saidas").select("id, data, placa, placa_original, transportadora, entregas, kg, valor").gte("data", de).lte("data", ate).order("data").order("id")),
+        buscarTudo(() => sb().from("saidas").select("id, data, placa, placa_original, transportadora, entregas, kg, valor, destino, zona, motorista, entregador").gte("data", de).lte("data", ate).order("data").order("id")),
         fetch(`/api/indicadores?de=${de}&ate=${ate}`, { headers: { "x-usuario": encodeURIComponent(email || "site") }, cache: "no-store" })
           .then(async (x) => { const j = await x.json().catch(() => ({})); if (!x.ok) throw new Error(j.erro || `erro ${x.status}`); return j; }),
       ]);
+      if (minha !== ultimaBusca.current) return;
       setSaidas(s); setExt({ reentregas: r.reentregas || [], devolucoes: r.devolucoes || [], erros: r.erros || {} });
-    } catch (e) { setErro(e.message || String(e)); }
-    setCarregando(false);
+    } catch (e) { if (minha === ultimaBusca.current) setErro(e.message || String(e)); }
+    if (minha === ultimaBusca.current) setCarregando(false);
   }
   useEffect(() => { carregar(); }, [de, ate]);
 
@@ -107,6 +110,10 @@ export default function Indicadores() {
       return { k: x.k, prog: x.prog, REENTREGA: r, DEVOLVIDO: v, ENTREGUE: { pedidos: Math.max(0, x.prog.pedidos - r.pedidos - v.pedidos), valor: Math.max(0, x.prog.valor - r.valor - v.valor), peso: Math.max(0, x.prog.peso - r.peso - v.peso) } };
     }).filter((x) => x.prog.pedidos || x.prog.valor || x.REENTREGA.pedidos || x.DEVOLVIDO.pedidos).sort((a, b) => b.prog.valor - a.prog.valor);
   }, [saidas, rees, devs, transDaPlaca]);
+
+  // cargas (veículo do frete no dia) com reentregas / devoluções
+  const cargasRe = useMemo(() => porCarga(rees, saidas, chaveRe, (l) => [l.placa]), [rees, saidas]);
+  const cargasDev = useMemo(() => porCarga(devs, saidas, chaveDev, (l) => [l.placa_retorno, l.placa]), [devs, saidas]);
 
   const motivos = (lista, chave) => {
     const m = new Map();
@@ -214,6 +221,9 @@ export default function Indicadores() {
         </section>
       </div>
 
+      <TabelaCargas titulo="Cargas com mais reentregas" cor={CAT.REENTREGA.cor} cargas={cargasRe} rotulo="Reentregas" chave={chaveRe} />
+      <TabelaCargas titulo="Cargas com mais devoluções" cor={CAT.DEVOLVIDO.cor} cargas={cargasDev} rotulo="Devoluções" chave={chaveDev} devolucao />
+
       <p className="sub ind-nota">
         Programado = veículos do Frete / Saídas no período (pedidos = entregas da programação). Reentregas = notas registradas no site de
         Transferências pela data do registro. Devoluções = notas do site de Devoluções pela {baseDev === "dt_entrega" ? "data de entrega" : "data de entrada"}.
@@ -270,5 +280,107 @@ function Barras({ linhas, m, cor }) {
         </div>
       ))}
     </div>
+  );
+}
+
+// junta as notas (reentregas ou devoluções) na carga de onde saíram: placa + dia no Frete / Saídas.
+// Procura pela placa atual e pela placa original (troca de placa); se não achar no dia, usa a saída
+// mais recente dessa placa antes da data, dentro do período.
+function porCarga(lista, saidas, chave, placasDe) {
+  const idx = new Map(); // placa -> saídas (ordenadas por data)
+  for (const s of saidas) for (const p of [normPlaca(s.placa), normPlaca(s.placa_original)]) {
+    if (!p) continue;
+    if (!idx.has(p)) idx.set(p, []);
+    idx.get(p).push(s);
+  }
+  const cargas = new Map();
+  for (const l of lista) {
+    let s = null;
+    for (const p of placasDe(l).map(normPlaca).filter(Boolean)) {
+      const cand = idx.get(p) || [];
+      s = cand.find((x) => x.data === l.data) || [...cand].reverse().find((x) => x.data <= l.data) || null;
+      if (s) break;
+    }
+    const placa = s ? normPlaca(s.placa) : placasDe(l).map(normPlaca).find(Boolean) || "—";
+    const k = s ? `s${s.id}` : `x${placa}|${l.data}`;
+    if (!cargas.has(k)) cargas.set(k, { k, saida: s, data: s ? s.data : l.data, placa, notas: [] });
+    cargas.get(k).notas.push(l);
+  }
+  return [...cargas.values()].map((c) => {
+    const t = somarNotas(c.notas, chave);
+    const s = c.saida || {};
+    const um = (campo) => c.notas.map((n) => n[campo]).find(Boolean) || "";
+    return {
+      ...c, ...t,
+      transportadora: s.transportadora || um("transportadora") || "—",
+      destino: s.destino || s.zona || um("destino") || "—",
+      entregas: c.saida ? Number(s.entregas) || 0 : null,
+      motorista: s.motorista || um("motorista") || "",
+      entregador: s.entregador || um("entregador") || "",
+      trocada: c.saida && s.placa_original ? normPlaca(s.placa_original) : "",
+    };
+  }).sort((a, b) => b.pedidos - a.pedidos || b.valor - a.valor);
+}
+
+function TabelaCargas({ titulo, cor, cargas, rotulo, chave, devolucao }) {
+  const [aberta, setAberta] = useState(null);
+  const [todas, setTodas] = useState(false);
+  const lista = todas ? cargas : cargas.slice(0, 15);
+  const tot = cargas.reduce((t, c) => ({ pedidos: t.pedidos + c.pedidos, valor: t.valor + c.valor }), { pedidos: 0, valor: 0 });
+  return (
+    <section className="cartao sem-pad ind-cargas" style={{ borderTopColor: cor }}>
+      <div className="barra-tabela">
+        <div className="ind-tit" style={{ margin: 0 }}><span className="ind-rot"><i style={{ background: cor }} /></span><b>{titulo}</b>
+          <span className="sub">{cargas.length} carga(s) · {tot.pedidos} nota(s) · {moeda(tot.valor)} · clique numa carga para ver as notas</span></div>
+      </div>
+      {!cargas.length ? <div className="vazio">Nenhuma {devolucao ? "devolução" : "reentrega"} no período.</div> : (
+        <div className="tabela-rolagem">
+          <table className="ind-tab ind-tab-cargas">
+            <thead><tr>
+              <th>Data</th><th>Transportadora</th><th>Placa</th><th>Destino</th>
+              <th className="n">Entregas prog.</th><th className="n">{rotulo}</th><th className="n">% das entregas</th><th className="n">Valor</th>
+              <th>Motorista</th><th>Entregador</th>
+            </tr></thead>
+            <tbody>
+              {lista.map((c) => (
+                <FragCarga key={c.k} c={c} cor={cor} aberta={aberta === c.k} alternar={() => setAberta(aberta === c.k ? null : c.k)} devolucao={devolucao} chave={chave} />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {cargas.length > 15 && <div className="ind-mais"><button className="btn link" onClick={() => setTodas(!todas)}>{todas ? "mostrar só as 15 primeiras" : `ver todas as ${cargas.length} cargas`}</button></div>}
+    </section>
+  );
+}
+
+function FragCarga({ c, cor, aberta, alternar, devolucao, chave }) {
+  const p = c.entregas ? c.pedidos / c.entregas : null;
+  const notas = [...new Map(c.notas.map((n) => [chave(n) + "|" + (n.nota_devolucao || ""), n])).values()];
+  return (
+    <>
+      <tr className={`ind-carga ${aberta ? "aberta" : ""}`} onClick={alternar}>
+        <td>{dm(c.data)}</td>
+        <td><b>{c.transportadora}</b></td>
+        <td><b>{c.placa}</b>{c.trocada ? <small className="sub"> (era {c.trocada})</small> : ""}</td>
+        <td>{c.destino}</td>
+        <td className="n">{c.entregas != null ? num(c.entregas) : <span className="sub" title="Placa não encontrada no Frete / Saídas do período">—</span>}</td>
+        <td className="n"><span className="ind-qtd" style={{ background: cor }}>{c.pedidos}</span></td>
+        <td className="n">{p != null ? `${(p * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%` : "—"}</td>
+        <td className="n">{moeda(c.valor)}</td>
+        <td>{c.motorista || <span className="sub">—</span>}</td>
+        <td>{c.entregador || <span className="sub">—</span>}</td>
+      </tr>
+      {aberta && notas.map((n, i) => (
+        <tr key={i} className="ind-carga-nota">
+          <td></td>
+          <td colSpan={3}>{devolucao ? `NF venda ${n.nota_venda || "—"}${n.nota_devolucao ? ` · dev. ${n.nota_devolucao}` : ""}` : `NF ${n.numnota || "—"}`} · <b>{n.cliente}</b></td>
+          <td colSpan={2} className="sub">{n.motivo || "sem motivo"}</td>
+          <td></td>
+          <td className="n">{moeda(n.valor)}</td>
+          <td colSpan={2} className="sub">{devolucao ? `entrada ${dm(n.dt_entrada)}` : n.bairro || ""}</td>
+        </tr>
+      ))}
+    </>
   );
 }

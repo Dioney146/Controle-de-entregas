@@ -781,3 +781,11 @@ table.ind-tab .n { text-align: right; }
   table.frete td.col-nome *, table.frete td.c-infor * { white-space: normal !important; overflow: visible !important; text-overflow: clip !important; }
   table.frete th.c-ent { padding: 0 2px !important; text-overflow: clip !important; }
 }
+/* Indicadores: cargas com mais reentregas / devoluções */
+.ind-cargas { margin-top: 10px; border-top: 3px solid; }
+table.ind-tab-cargas td, table.ind-tab-cargas th { white-space: nowrap; }
+table.ind-tab-cargas tr.ind-carga { cursor: pointer; }
+table.ind-tab-cargas tr.ind-carga:hover td, table.ind-tab-cargas tr.ind-carga.aberta td { background: #f4f7fa; }
+table.ind-tab-cargas tr.ind-carga-nota td { background: #fafbfc; font-size: .76rem; border-bottom: 1px dashed #eef1f5; }
+.ind-qtd { display: inline-block; min-width: 24px; text-align: center; padding: 1px 7px; border-radius: 999px; color: #fff; font-weight: 800; }
+.ind-mais { padding: 6px 12px; }
