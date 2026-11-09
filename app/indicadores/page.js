@@ -196,7 +196,7 @@ export default function Indicadores() {
 
         <section className="cartao ind-trans">
           <div className="ind-tit"><b>Por transportadora</b><span className="sub">% do programado de cada uma · {METRICAS[metrica].toLowerCase()}</span></div>
-          <table className="ind-tab">
+          <div className="ind-rolar"><table className="ind-tab">
             <thead><tr><th>Transportadora</th><th className="n">Programado</th><th className="n">Entregue</th><th className="n">Reentrega</th><th className="n">Devolvido</th></tr></thead>
             <tbody>
               {porTrans.map((t) => (
@@ -209,7 +209,7 @@ export default function Indicadores() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         </section>
 
         <section className="cartao">
@@ -336,7 +336,7 @@ function TabelaCargas({ titulo, cor, cargas, rotulo, chave, devolucao, unidade =
           <span className="sub">{cargas.length} carga(s) · {tot.pedidos} {unidade}{devolucao ? "" : ` (${cargas.reduce((n, c) => n + c.notas.length, 0)} NFs)`} · {moeda(tot.valor)} · clique numa carga para ver as notas</span></div>
       </div>
       {!cargas.length ? <div className="vazio">Nenhuma {devolucao ? "devolução" : "reentrega"} no período.</div> : (
-        <div className="tabela-rolagem">
+        <div className="tabela-rolagem ind-cargas-tabela">
           <table className="ind-tab ind-tab-cargas">
             <thead><tr>
               <th>Data</th><th>Transportadora</th><th>Placa</th><th>Destino</th>
@@ -349,6 +349,11 @@ function TabelaCargas({ titulo, cor, cargas, rotulo, chave, devolucao, unidade =
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+      {cargas.length > 0 && (
+        <div className="ind-cargas-cartoes">
+          {lista.map((c) => <CartaoCarga key={c.k} c={c} cor={cor} rotulo={rotulo} aberta={aberta === c.k} alternar={() => setAberta(aberta === c.k ? null : c.k)} devolucao={devolucao} chave={chave} />)}
         </div>
       )}
       {cargas.length > 15 && <div className="ind-mais"><button className="btn link" onClick={() => setTodas(!todas)}>{todas ? "mostrar só as 15 primeiras" : `ver todas as ${cargas.length} cargas`}</button></div>}
@@ -384,5 +389,41 @@ function FragCarga({ c, cor, aberta, alternar, devolucao, chave }) {
         </tr>
       ))}
     </>
+  );
+}
+
+// celular: cada carga num cartão
+function CartaoCarga({ c, cor, rotulo, aberta, alternar, devolucao, chave }) {
+  const p = c.entregas ? c.pedidos / c.entregas : null;
+  const notas = [...new Map(c.notas.map((n) => [chave(n) + "|" + (n.nota_devolucao || "") + "|" + (n.numnota || ""), n])).values()];
+  return (
+    <div className={`ind-cc ${aberta ? "aberta" : ""}`} onClick={alternar} style={{ borderLeftColor: cor }}>
+      <div className="ind-cc-cab">
+        <div><b>{c.placa}</b>{c.trocada ? <small> (era {c.trocada})</small> : ""}<span>{c.transportadora} · {dm(c.data)}</span></div>
+        <span className="ind-qtd grande" style={{ background: cor }}>{c.pedidos}</span>
+      </div>
+      <div className="ind-cc-dest">{c.destino}</div>
+      <div className="ind-cc-nums">
+        <div><small>Entregas prog.</small><b>{c.entregas != null ? num(c.entregas) : "—"}</b></div>
+        <div><small>{rotulo}</small><b style={{ color: cor }}>{c.pedidos}</b></div>
+        <div><small>% das entregas</small><b>{p != null ? `${(p * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%` : "—"}</b></div>
+        <div><small>Valor</small><b>{moeda(c.valor)}</b></div>
+      </div>
+      <div className="ind-cc-pessoas">
+        <span>🚚 <b>{c.motorista || "—"}</b></span>
+        <span>📦 <b>{c.entregador || "—"}</b></span>
+      </div>
+      <div className="ind-cc-ver">{aberta ? "▴ esconder as notas" : `▾ ver ${notas.length} nota(s)`}</div>
+      {aberta && (
+        <div className="ind-cc-notas">
+          {notas.map((n, i) => (
+            <div key={i}>
+              <b>{devolucao ? `NF ${n.nota_venda || "—"}` : `NF ${n.numnota || "—"}`}</b> · {n.cliente}
+              <small>{n.motivo || "sem motivo"} · {moeda(n.valor)}</small>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

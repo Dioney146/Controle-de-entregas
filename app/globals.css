@@ -789,3 +789,95 @@ table.ind-tab-cargas tr.ind-carga:hover td, table.ind-tab-cargas tr.ind-carga.ab
 table.ind-tab-cargas tr.ind-carga-nota td { background: #fafbfc; font-size: .76rem; border-bottom: 1px dashed #eef1f5; }
 .ind-qtd { display: inline-block; min-width: 24px; text-align: center; padding: 1px 7px; border-radius: 999px; color: #fff; font-weight: 800; }
 .ind-mais { padding: 6px 12px; }
+
+/* ---------- celular: menu ☰ e Indicadores ---------- */
+.menu-botao { display: none; }
+.ind-cargas-cartoes { display: none; }
+.ind-grade > * { min-width: 0; }
+.ind-trans { overflow-x: auto; }
+@media (max-width: 700px) {
+  /* topo: logo + página atual + ☰; o menu abre como lista */
+  .topo { flex-wrap: wrap !important; position: sticky; top: 0; z-index: 60; }
+  .topo .marca span { display: none; }
+  .menu-botao {
+    display: inline-flex; align-items: center; gap: 10px; margin-left: auto; order: 2;
+    background: rgba(255,255,255,.1); color: #fff; border: 1px solid rgba(255,255,255,.25); border-radius: 10px;
+    padding: 8px 12px; min-height: 42px; font: inherit; font-size: .9rem; cursor: pointer;
+  }
+  .menu-botao span { font-size: 1.15rem; line-height: 1; }
+  .topo nav { display: none !important; }
+  .topo nav.aberto {
+    display: flex !important; flex-direction: column; flex-wrap: nowrap !important; flex-basis: 100%; order: 5; gap: 2px; padding: 6px 0 4px;
+    max-height: 70vh; overflow-y: auto;
+  }
+  .topo nav.aberto a { font-size: 1rem !important; padding: 13px 14px !important; border-radius: 10px; }
+  .topo nav.aberto a.link-externo { margin-top: 4px; }
+  .topo .presenca { display: none; }
+  .topo .usuario { order: 3; }
+  .topo .usuario .nome-logado { display: none; }
+
+  /* Indicadores */
+  .ind-filtros { gap: 10px; }
+  .ind-filtros > .linha-acoes:first-child { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .ind-filtros .campo-data { width: 100%; }
+  .ind-filtros .campo-data input { width: 100%; min-height: 44px; font-size: 16px; }
+  .ind-atalhos { grid-column: 1 / -1; display: grid !important; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .ind-atalhos .btn { min-height: 40px; padding: 6px 4px; }
+  .ind-filtros > .linha-acoes:first-child > .btn.link { grid-column: 1 / -1; justify-self: start; }
+  .ind-filtros > .linha-acoes:last-child { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; align-items: center; }
+  .ind-filtros > .linha-acoes:last-child .sub { grid-column: 1 / -1; margin: 4px 0 0 !important; }
+  .ind-filtros > .linha-acoes:last-child .btn { min-height: 40px; padding: 6px 4px; white-space: normal; line-height: 1.1; }
+  .ind-cards { grid-template-columns: minmax(0, 1fr) !important; gap: 8px; }
+  .ind-card { padding: 10px 12px; display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 12px; align-items: center; }
+  .ind-card > .ind-rot { grid-column: 1 / -1; }
+  .ind-card > b { font-size: 1.45rem; white-space: nowrap; }
+  .ind-card > small.sub { grid-column: 1 / -1; }
+  .ind-card > table.ind-mini { grid-column: 2; grid-row: 2 / span 2; }
+  .ind-prog { display: flex !important; flex-direction: row; flex-wrap: wrap; column-gap: 14px; align-items: baseline; }
+  .ind-prog > .ind-rot, .ind-prog > small.sub { flex-basis: 100%; }
+  table.ind-mini { font-size: .72rem; }
+  table.ind-mini td.n:last-child { width: 44px; }
+  .ind-b100 { grid-template-columns: 56px minmax(0, 1fr) 84px; gap: 6px; font-size: .76rem; }
+  .ind-b100-val { font-size: .72rem; }
+  .ind-tit { gap: 6px; }
+  .ind-leg { margin-left: 0; width: 100%; }
+  .ind-grade { grid-template-columns: minmax(0, 1fr) !important; }
+  .bk-barra-linha { grid-template-columns: minmax(0, 120px) minmax(0, 1fr) auto; }
+  /* cargas: cartões em vez da tabela */
+  .ind-cargas-tabela { display: none; }
+  .ind-cargas-cartoes { display: flex; flex-direction: column; gap: 8px; padding: 8px 10px 10px; }
+  .ind-cargas .barra-tabela { flex-wrap: wrap; }
+  .ind-cc { border: 1px solid var(--borda); border-left: 5px solid; border-radius: 10px; padding: 10px 12px; background: #fff; cursor: pointer; }
+  .ind-cc.aberta { box-shadow: 0 4px 14px rgba(19,38,59,.12); }
+  .ind-cc-cab { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+  .ind-cc-cab b { font-size: 1.05rem; color: #13263b; }
+  .ind-cc-cab small { color: var(--suave); }
+  .ind-cc-cab span:not(.ind-qtd) { display: block; font-size: .78rem; color: var(--suave); font-weight: 600; }
+  .ind-qtd.grande { font-size: 1.05rem; min-width: 34px; padding: 4px 10px; }
+  .ind-cc-dest { font-size: .82rem; margin-top: 2px; color: #334; }
+  .ind-cc-nums { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; margin-top: 8px; padding-top: 8px; border-top: 1px solid #eef1f5; }
+  .ind-cc-nums small { display: block; font-size: .64rem; text-transform: uppercase; letter-spacing: .04em; color: var(--suave); }
+  .ind-cc-nums b { font-size: .95rem; color: #13263b; }
+  .ind-cc-pessoas { display: flex; flex-direction: column; gap: 2px; margin-top: 8px; font-size: .82rem; }
+  .ind-cc-ver { margin-top: 6px; font-size: .78rem; color: #1f5fa8; font-weight: 600; }
+  .ind-cc-notas { margin-top: 6px; display: flex; flex-direction: column; gap: 6px; font-size: .8rem; }
+  .ind-cc-notas small { display: block; color: var(--suave); }
+  .ind-nota { font-size: .72rem; }
+}
+.ind-rolar { overflow-x: auto; max-width: 100%; }
+@media (max-width: 700px) {
+  .ind-card small.sub { white-space: normal; }
+  .ind-cards > *, .ind-grade > *, .ind-comp, .ind-filtros, .ind-cargas { min-width: 0; max-width: 100%; }
+  table.ind-tab { font-size: .76rem; }
+  table.ind-tab th, table.ind-tab td { padding: 5px 4px; }
+}
+@media (max-width: 700px) {
+  .ind-prog > * { min-width: 0; max-width: 100%; }
+  .ind-prog > small.sub { white-space: normal !important; width: 100%; flex: 1 1 100%; }
+}
+@media (max-width: 700px) {
+  .ind-filtros .linha-acoes > *, .ind-atalhos > * { min-width: 0; }
+  .ind-filtros .campo-data input { min-width: 0; box-sizing: border-box; }
+  .ind-filtros .campo-data { display: flex; flex-direction: column; }
+  .ind-atalhos .btn { justify-content: center; font-size: .8rem; }
+}
