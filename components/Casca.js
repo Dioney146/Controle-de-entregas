@@ -74,6 +74,8 @@ export default function Casca({ children }) {
   const caminho = usePathname();
   const [nome, setNome] = useState(undefined); // undefined = ainda lendo
   const [avisoNome, setAvisoNome] = useState("");
+  const [menuAberto, setMenuAberto] = useState(false); // celular: menu ☰
+  useEffect(() => { setMenuAberto(false); }, [caminho]);
 
   useEffect(() => {
     const salvo = ler("usuarioSite", "") || "";
@@ -115,7 +117,10 @@ export default function Casca({ children }) {
     <UsuarioCtx.Provider value={{ email: nome }}>
       <header className="topo nao-imprimir">
         <div className="marca"><img src="/logo-d.png" alt="" className="marca-img" />Delly's <span>Controle de Entregas · AM</span></div>
-        <nav>
+        <button className="menu-botao" onClick={() => setMenuAberto(!menuAberto)} aria-expanded={menuAberto} aria-label="Abrir o menu">
+          <b>{MENU.find((m) => m.href === caminho)?.rotulo || "Menu"}</b><span aria-hidden="true">{menuAberto ? "✕" : "☰"}</span>
+        </button>
+        <nav className={menuAberto ? "aberto" : ""}>
           {MENU.map((m) => (
             <Link key={m.href} href={m.href} className={caminho === m.href ? "ativo" : ""}>{m.rotulo}</Link>
           ))}
