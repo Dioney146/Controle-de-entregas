@@ -87,7 +87,7 @@ function Adicionar({ email, hoje, existentes, clientes, aoAdicionar, aoErro }) {
   const padrao = { cliente: cliente.toUpperCase().trim(), placa_ficticia: normPlaca(placaF) || PLACAS_FICTICIAS[0], destino: destino.toUpperCase().trim() };
   const leitura = useMemo(() => (texto.trim() ? lerColagem(texto, padrao) : null), [texto]);
   // notas coladas + o que veio da ROAD (o que foi colado tem prioridade; a ROAD completa o que faltar)
-  const coladas = (leitura?.notas || []).map((n) => ({ ...completarComRoad(n, road.achadas[n.numnota], padrao), bairro: bairros[n.numnota] || n.bairro || bairroTodas }));
+  const coladas = (leitura?.notas || []).map((n) => ({ ...completarComRoad(n, road.achadas[n.numnota], padrao), bairro: bairros[n.numnota] || completarComRoad(n, road.achadas[n.numnota], padrao).bairro || bairroTodas }));
   const novas = coladas.filter((n) => !existentes.has(n.numnota));
   const repetidas = coladas.length - novas.length;
   const semBairro = novas.filter((n) => !n.bairro).length;
@@ -110,7 +110,9 @@ function Adicionar({ email, hoje, existentes, clientes, aoAdicionar, aoErro }) {
         cliente: a.cliente, codcli: a.codcli, destino: a.destino, placa_road: a.placa_road,
       }));
       setBusca({ nf, estado: "achou", nota: a });
-      setTimeout(() => document.getElementById("na-bairro")?.focus(), 50);
+      const b = BAIRROS_MANAUS.includes(a.bairro) ? a.bairro : "";
+      setBairro(b); // bairro da aba "bairro" da base, quando tiver
+      setTimeout(() => document.getElementById(b ? "na-salvar" : "na-bairro")?.focus(), 50);
       return a;
     } catch (e) {
       setBusca({ nf, estado: "erro", erro: e.message });
