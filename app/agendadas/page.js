@@ -110,7 +110,7 @@ function Adicionar({ email, hoje, existentes, clientes, aoAdicionar, aoErro }) {
         cliente: a.cliente, codcli: a.codcli, destino: a.destino, placa_road: a.placa_road,
       }));
       setBusca({ nf, estado: "achou", nota: a });
-      const b = BAIRROS_MANAUS.includes(a.bairro) ? a.bairro : "";
+      const b = a.bairro || ""; // bairro vinculado à nota na ROAD (mesmo fora da lista oficial)
       setBairro(b); // bairro da aba "bairro" da base, quando tiver
       setTimeout(() => document.getElementById(b ? "na-salvar" : "na-bairro")?.focus(), 50);
       return a;
@@ -158,7 +158,7 @@ function Adicionar({ email, hoje, existentes, clientes, aoAdicionar, aoErro }) {
     // Enter logo depois de digitar: primeiro busca na ROAD e preenche; o próximo Enter adiciona
     if (busca.nf !== numnota) { await buscarUma(numnota); return; }
     if (busca.estado === "buscando") return;
-    if (!BAIRROS_MANAUS.includes(bairro)) { document.getElementById("na-bairro")?.focus(); return aoErro("Selecione um Bairro da lista antes de salvar."); }
+    if (!BAIRROS_MANAUS.includes(bairro) && !(bairro && bairro === busca.nota?.bairro)) { document.getElementById("na-bairro")?.focus(); return aoErro("Selecione um Bairro da lista antes de salvar."); }
     const ok = await gravar([{ bairro,
       numnota, numped: String(nota.numped).replace(/\D/g, ""), codcli: nota.codcli || "",
       cliente: (nota.cliente || padrao.cliente).toUpperCase(),
@@ -250,6 +250,7 @@ function Adicionar({ email, hoje, existentes, clientes, aoAdicionar, aoErro }) {
                           <td>
                             <select className={`campo mini ${n.bairro ? "" : "na-falta"}`} value={n.bairro} onChange={(e) => setBairros({ ...bairros, [n.numnota]: e.target.value })} disabled={existentes.has(n.numnota)}>
                               <option value="">— bairro —</option>
+                              {n.bairro && !BAIRROS_MANAUS.includes(n.bairro) && <option>{n.bairro}</option>}
                               {BAIRROS_MANAUS.map((b) => <option key={b}>{b}</option>)}
                             </select>
                           </td>
